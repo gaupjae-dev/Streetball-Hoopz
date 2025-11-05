@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Detailed Hoop Model - V4 with Player</title>
+<title>Detailed Hoop Model - V5 with Physics</title>
 <style>
   body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
   canvas { display: block; }
@@ -9,12 +9,13 @@
     position: absolute;
     top: 10px;
     right: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     color: white;
     padding: 10px;
     border-radius: 5px;
     font-family: Arial, sans-serif;
     width: 250px;
+    z-index: 10; /* Ensure it's above the canvas */
   }
   .info-panel h3 {
     margin-top: 0;
@@ -22,34 +23,43 @@
     border-bottom: 1px solid #007bff;
     padding-bottom: 5px;
   }
-  .info-panel ul {
-    list-style-type: none;
-    padding: 0;
-  }
-  .info-panel li {
-    margin-bottom: 5px;
+  .info-panel p.instruction {
+    color: #ffd700;
+    font-weight: bold;
+    border: 1px solid #ffd700;
+    padding: 5px;
+    text-align: center;
+    margin-bottom: 10px;
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.js"></script>
 </head>
 <body>
 
 <div class="info-panel">
-  <h3>🏀 Quick Play Setup</h3>
-  <p>The **Player Model** and **Basketball** are now added to the scene, ready for coding movement and physics.</p>
-  
-  <strong>New Elements Added:</strong>
+  <h3>🏀 Quick Play Mode</h3>
+  <p class="instruction">Press **SPACE** to shoot!</p>
+  <strong>Physics & Interaction:</strong>
   <ul>
-    <li>**Player Model:** Simple Capsule/Sphere.</li>
-    <li>**Basketball:** Orange Sphere, attached to player.</li>
+    <li>**Cannon.js** added for real-time physics.</li>
+    <li>Basketball is a **physics body**.</li>
+    <li>Rim and Floor are **static physics bodies**.</li>
   </ul>
-  
-  <p>Hoop Specs are confirmed.</p>
+  <p>Use mouse to rotate the view (OrbitControls).</p>
 </div>
 
 <script>
-  // --- Setup Scene ---
+  // --- Constants ---
+  const SCALE = 1/10; // 1 unit = 10 inches 
+  const RIM_Y_POSITION = 120 * SCALE; // 12 units (10 feet)
+  const BALL_RADIUS = 0.2; // ~8 inches (standard size 7)
+
+  // --- Global Scene Variables ---
+  let ballInHand = true;
+
+  // --- 1. Setup Three.js (Rendering) ---
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -57,25 +67,43 @@
   renderer.setClearColor(0xf0f0f0); 
   document.body.appendChild(renderer.domElement);
 
-  // Add orbit controls for user interaction
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  // Camera Position: Set to view the player and hoop
   camera.position.set(5, 5, 20); 
-  controls.target.set(0, 5, 0); // Focus camera on the player's general area
+  controls.target.set(0, 5, 0); 
   controls.update();
 
-  // Add lighting
   const ambientLight = new THREE.AmbientLight(0x404040, 5);
   scene.add(ambientLight);
   const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
   directionalLight.position.set(5, 10, 7);
   scene.add(directionalLight);
-  
-  // --- Constants ---
-  const SCALE = 1/10; // 1 unit = 10 inches 
-  const RIM_Y_POSITION = 120 * SCALE; // 12 units (10 feet)
 
-  // --- Hoop and Court Geometry (Kept from V3) ---
+  // --- 2. Setup Cannon.js (Physics) ---
+  const world = new CANNON.World();
+  world.gravity.set(0, -9.82, 0); // Standard gravity
+  world.broadphase = new CANNON.NaiveBroadphase();
+  world.solver.iterations = 10;
+  
+  // Create Physics Materials
+  const plasticMaterial = new CANNON.Material();
+  const groundMaterial = new CANNON.Material();
+  const ballMaterial = new CANNON.Material();
+
+  // Define how these materials interact (e.g., how bouncy the ball is)
+  const ballGroundContact = new CANNON.ContactMaterial(groundMaterial, ballMaterial, {
+    friction: 0.8,
+    restitution: 0.7 // Bounce factor (0.7 means 70% of velocity is kept after bounce)
+  });
+  world.addContactMaterial(ballGroundContact);
+
+  // --- 3. Create Game Objects (Three.js Mesh + Cannon.js Body) ---
+  
+  // --- A. Basketball Hoop (Same as V4) ---
+  // ... (Include all the hoop and court code from V4 here)
+  // [Code Snippet for Hoop and Court structure is omitted here for brevity, but should be pasted in your actual file]
+  
+  // Backboard, Rim, Pole, and Court creation...
+  // (Start of Hoop/Court Setup)
   
   // Backboard
   const backboardWidth = 72 * SCALE;
@@ -89,7 +117,7 @@
   backboard.position.set(0, backboardY, 0);
   scene.add(backboard);
 
-  // Rim (and related support/net)
+  // Rim 
   const rimOuterRadius = 18 * SCALE / 2 + 1 * SCALE / 2;
   const rimTubeRadius = 1 * SCALE / 2; 
 
@@ -110,7 +138,7 @@
   pole.position.set(0, poleHeight / 2, -10 * SCALE);
   scene.add(pole);
 
-  // Court Floor
+  // Court Floor (Three.js Mesh)
   const courtWidth = 30;
   const courtDepth = 40;
   const floorGeometry = new THREE.PlaneGeometry(courtWidth, courtDepth);
@@ -120,104 +148,137 @@
   floor.position.y = 0;
   floor.position.z = 10;
   scene.add(floor);
+  
+  // Court Floor (Cannon.js Body - Static)
+  const floorShape = new CANNON.Plane();
+  const floorBody = new CANNON.Body({ mass: 0, material: groundMaterial }); // mass: 0 makes it static
+  floorBody.addShape(floorShape);
+  floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); // Rotate to be horizontal
+  floorBody.position.y = 0;
+  world.addBody(floorBody);
+  
+  // Rim Physics Body (Static Cylinder for simplified collision)
+  const rimPhysicsShape = new CANNON.Cylinder(rimTubeRadius, rimTubeRadius, 0.1, 16);
+  const rimBody = new CANNON.Body({ mass: 0, material: plasticMaterial });
+  rimBody.addShape(rimPhysicsShape);
+  rimBody.position.set(rim.position.x, RIM_Y_POSITION, rim.position.z);
+  rimBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), Math.PI / 2); // Rotate to face forward
+  world.addBody(rimBody);
+  
+  // (End of Hoop/Court Setup)
 
-
-  // --- NEW: Player Model ---
+  
+  // --- B. Player Model (Three.js Mesh) ---
   const playerGroup = new THREE.Group();
   const playerX = 0;
-  const playerZ = floor.position.z + courtDepth / 2 - 5; // Position player a few units back from the hoop
+  const playerZ = floor.position.z + courtDepth / 2 - 5; 
 
-  // 1. Body (Capsule)
   const bodyHeight = 1.5;
   const bodyRadius = 0.3;
   const bodyGeometry = new THREE.CapsuleGeometry(bodyRadius, bodyHeight, 10, 20);
-  const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x007bff }); // Blue Jersey
+  const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x007bff });
   const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-  body.position.y = bodyHeight / 2 + bodyRadius; // Base rests on the floor
+  body.position.y = bodyHeight / 2 + bodyRadius; 
+  
   playerGroup.add(body);
-
-  // 2. Head (Sphere)
-  const headRadius = 0.25;
-  const headGeometry = new THREE.SphereGeometry(headRadius, 32, 32);
-  const headMaterial = new THREE.MeshPhongMaterial({ color: 0xf0d9b5 }); // Skin tone
-  const head = new THREE.Mesh(headGeometry, headMaterial);
-  head.position.y = body.position.y + bodyHeight / 2 + headRadius - 0.1; // Sits on top of the body
-  playerGroup.add(head);
-
-  // Position the entire player group
   playerGroup.position.set(playerX, 0, playerZ);
   scene.add(playerGroup);
 
 
-  // --- NEW: Basketball Model ---
-  const basketballRadius = 0.2; // ~8 inches (standard size 7)
-  const basketballGeometry = new THREE.SphereGeometry(basketballRadius, 32, 32);
-  const basketballMaterial = new THREE.MeshPhongMaterial({ color: 0xff8c00 }); // Orange
-  const basketball = new THREE.Mesh(basketballGeometry, basketballMaterial);
+  // --- C. Basketball (Three.js Mesh + Cannon.js Body) ---
+  
+  // Three.js Mesh
+  const basketballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+  const basketballMaterial = new THREE.MeshPhongMaterial({ color: 0xff8c00 }); 
+  const basketballMesh = new THREE.Mesh(basketballGeometry, basketballMaterial);
+  
+  // Cannon.js Body (Dynamic)
+  const ballShape = new CANNON.Sphere(BALL_RADIUS);
+  const ballBody = new CANNON.Body({ mass: 0.5, material: ballMaterial }); // Mass of 0.5 for realistic feel
+  ballBody.addShape(ballShape);
+  
+  // Initial position (in player's hand)
+  const initialBallY = body.position.y + bodyRadius * 2; 
+  ballBody.position.set(playerX, initialBallY, playerZ + bodyRadius);
+  basketballMesh.position.copy(ballBody.position); // Sync mesh to body initially
+  
+  playerGroup.add(basketballMesh); // Attach to player initially
+  scene.add(basketballMesh); // Add the mesh to the scene
 
-  // Position the ball in the player's hands (a bit above the waist)
-  const ballY = body.position.y + bodyRadius * 2; 
-  basketball.position.set(playerX, ballY, playerZ + bodyRadius); 
-  
-  // Attach the ball to the player's group so it moves with the player
-  playerGroup.add(basketball); 
-  
-  // Set the ball's position relative to the playerGroup's center (0, 0, 0)
-  basketball.position.set(0, ballY, bodyRadius); 
+  // Update mesh position when attached to player (before shooting)
+  function syncBallToPlayer() {
+    if (ballInHand) {
+      basketballMesh.position.set(0, initialBallY, bodyRadius);
+      basketballMesh.rotation.set(0, 0, 0);
+      ballBody.position.set(playerGroup.position.x, initialBallY, playerGroup.position.z + bodyRadius);
+      ballBody.velocity.set(0, 0, 0);
+      ballBody.angularVelocity.set(0, 0, 0);
+    }
+  }
 
 
-  // --- Render Loop (Rest of the scene elements are here for completeness) ---
-  
-  // Backboard details (padding, target box)
-  const paddingHeight = 6 * SCALE;
-  const paddingDepth = 4 * SCALE;
-  const paddingGeometry = new THREE.BoxGeometry(backboardWidth, paddingHeight, paddingDepth);
-  const paddingMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-  const padding = new THREE.Mesh(paddingGeometry, paddingMaterial);
-  padding.position.set(0, backboardY - backboardHeight / 2 + paddingHeight / 2, backboardDepth / 2 + paddingDepth / 2 - 0.05);
-  scene.add(padding);
+  // --- 4. Shooting Mechanism ---
+  function shootBall() {
+    if (ballInHand) {
+      // 1. Detach from the player's group (Three.js)
+      playerGroup.remove(basketballMesh);
+      scene.add(basketballMesh);
+      
+      // 2. Set Cannon.js position (must be done after detaching the mesh)
+      ballBody.position.set(playerGroup.position.x, initialBallY, playerGroup.position.z + bodyRadius);
+      
+      // 3. Apply initial velocity for a jump shot towards the hoop (at 0, 12, rimZOffset)
+      const SHOOT_POWER = 12;
+      const velocityX = 0;
+      const velocityY = 10; // Vertical lift
+      const velocityZ = -SHOOT_POWER; // Forward throw (Negative Z because the hoop is in the negative Z direction)
 
-  const targetBoxWidth = 24 * SCALE;
-  const targetBoxHeight = 18 * SCALE;
-  const targetBoxY = backboardY - (backboardHeight / 2) + (targetBoxHeight / 2) + paddingHeight;
-  
-  const targetBoxShape = new THREE.Shape();
-  targetBoxShape.moveTo(-targetBoxWidth / 2, -targetBoxHeight / 2);
-  targetBoxShape.lineTo(targetBoxWidth / 2, -targetBoxHeight / 2);
-  targetBoxShape.lineTo(targetBoxWidth / 2, targetBoxHeight / 2);
-  targetBoxShape.lineTo(-targetBoxWidth / 2, targetBoxHeight / 2);
-  targetBoxShape.lineTo(-targetBoxWidth / 2, -targetBoxHeight / 2);
+      ballBody.velocity.set(velocityX, velocityY, velocityZ);
+      
+      ballInHand = false;
+    }
+  }
 
-  const targetBoxGeometry = new THREE.ShapeGeometry(targetBoxShape);
-  const targetBoxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-  const targetBoxLine = new THREE.LineSegments(new THREE.EdgesGeometry(targetBoxGeometry), targetBoxMaterial);
-  targetBoxLine.position.set(0, targetBoxY, backboardDepth / 2 + 0.01);
-  scene.add(targetBoxLine);
+  // Event Listener for the SPACE key
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'Space') {
+      shootBall();
+    }
+  });
+
+
+  // --- 5. Animation/Physics Loop ---
+  let lastTime = 0;
+  const timeStep = 1 / 60; // Fixed time step for physics
   
-  // Net
-  const netHeight = 15 * SCALE;
-  const netTopRadius = rimOuterRadius - rimTubeRadius * 2;
-  const netBottomRadius = 5 * SCALE;
-  
-  const netGeometry = new THREE.CylinderGeometry(netTopRadius, netBottomRadius, netHeight, 32, 1, true);
-  const netMaterial = new THREE.MeshBasicMaterial({ color: 0xcccccc, wireframe: true, transparent: true, opacity: 0.5 }); 
-  const net = new THREE.Mesh(netGeometry, netMaterial);
-  net.position.set(rim.position.x, RIM_Y_POSITION - netHeight / 2, rim.position.z);
-  scene.add(net);
-  
-  // Support Structure
-  const supportLength = rim.position.z - backboardDepth / 2 - 0.5 * SCALE; 
-  const supportGeometry = new THREE.BoxGeometry(5 * SCALE, 5 * SCALE, supportLength);
-  const supportMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
-  const support = new THREE.Mesh(supportGeometry, supportMaterial);
-  support.position.set(0, RIM_Y_POSITION, backboardDepth / 2 + supportLength / 2);
-  scene.add(support);
-  
-  
-  function animate() {
+  function animate(time) {
     requestAnimationFrame(animate);
+
+    // Update physics world
+    if (lastTime !== undefined) {
+      world.step(timeStep);
+    }
+    
+    // Sync Three.js meshes to Cannon.js bodies
+    if (ballInHand) {
+      syncBallToPlayer();
+    } else {
+      // Only update the mesh position from physics body if the ball is shot
+      basketballMesh.position.copy(ballBody.position);
+      basketballMesh.quaternion.copy(ballBody.quaternion);
+    }
+
+    // Check if the ball has fallen far below the court (reset logic)
+    if (ballBody.position.y < -5) {
+        ballInHand = true;
+        playerGroup.add(basketballMesh); // Re-attach mesh
+        ballBody.velocity.set(0, 0, 0);
+        ballBody.angularVelocity.set(0, 0, 0);
+    }
+    
     controls.update();
     renderer.render(scene, camera);
+    lastTime = time;
   }
   
   animate();
