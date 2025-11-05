@@ -6,6 +6,19 @@
     <title>THE G.O.A.T. PROJECT</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Custom Tailwind config for neon colors
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neon-blue': '#00c4ff',
+                        'neon-pink': '#ff00ff',
+                    },
+                }
+            }
+        }
+    </script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
@@ -15,11 +28,8 @@
 <body>
 
     <div class="main-menu-container" id="main-menu-container">
-        
         <div class="main-menu-top">
-            
             <h1 class="main-title">THE G.O.A.T. PROJECT</h1>
-            
             <div class="main-modes-wrapper">
                 <button class="menu-button" onclick="quickPlay()">QUICK PLAY (3D)</button>
                 <button class="menu-button" onclick="loadMissions()">MISSIONS</button>
@@ -33,7 +43,6 @@
             <button class="menu-button" onclick="loadOptions()">OPTIONS</button>
             <button class="menu-button" onclick="quitGame()">QUIT</button>
         </div>
-        
     </div>
 
     <div id="quickplay-container" class="quickplay-game-mode hidden">
@@ -165,7 +174,7 @@
         // =========================================================================
 
         function quickPlay() {
-             startQuickPlay();
+            startQuickPlay();
         }
 
         window.startQuickPlay = function() {
@@ -189,7 +198,7 @@
             if (animFrame) {
                 cancelAnimationFrame(animFrame);
             }
-             
+            
             // Clear movement keys (so player doesn't keep moving in the menu)
             moveForward = moveBackward = moveLeft = moveRight = false;
             isChargingShot = false;
@@ -204,7 +213,7 @@
         }
 
         // =========================================================================
-        // QUICK PLAY 3D GAME LOGIC (Copied from your provided code)
+        // QUICK PLAY 3D GAME LOGIC
         // =========================================================================
 
         // --- Game Constants ---
@@ -677,9 +686,9 @@
         function onWindowResize() {
             const container = document.getElementById('scene-container');
             if (container) {
-                 camera.aspect = container.clientWidth / container.clientHeight;
-                 camera.updateProjectionMatrix();
-                 renderer.setSize(container.clientWidth, container.clientHeight);
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
             }
         }
 
@@ -713,8 +722,9 @@
             if (isThirdPerson) {
                 camera.position.copy(TPV_CAMERA_OFFSET);
                 
+                const lookAtTargetLocal = TPV_LOOKAT_LOCAL.clone();
                 const lookAtTargetWorld = new THREE.Vector3();
-                player.localToWorld(TPV_LOOKAT_LOCAL.clone(), lookAtTargetWorld);
+                player.localToWorld(lookAtTargetLocal, lookAtTargetWorld);
                 camera.lookAt(lookAtTargetWorld);
                 
             } else {
@@ -722,48 +732,10 @@
                 camera.rotation.set(0, 0, 0); 
             }
 
-      function updatePlayerMovement() {
-    // ... Player movement vector calculation ...
-    
-    // Holding Logic
-    if (isBallHeld) {
-        const tempPos = BALL_HOLD_OFFSET.clone();
-        camera.localToWorld(tempPos); 
+            // --- Main Game Logic Update ---
+            updatePlayerMovement();
+            updatePhysics();
 
-        // CRITICAL: Mesh and Body positions are updated ONLY when held
-        ballMesh.position.copy(tempPos);
-        ballBody.position.copy(tempPos);
-        
-        ballBody.velocity.set(0, 0, 0);
-        ballBody.angularVelocity.set(0, 0, 0);
-    } else {
-        // Retrieval Logic: This ONLY applies when isBallHeld is false (after shooting)
-        const playerPos2D = new THREE.Vector3(player.position.x, 0, player.position.z);
-        const ballPos2D = new THREE.Vector3(ballMesh.position.x, 0, ballMesh.position.z);
-        const playerToBallDistSq = playerPos2D.distanceToSquared(ballPos2D);
-        
-        if (playerToBallDistSq < RETRIEVE_DISTANCE_SQ && ballBody.position.y < 0.5) {
-            const speed = ballBody.velocity.length();
-            if (speed < 1.5) { 
-                holdBall();
-            }
-        }
-    }
-}
-            function updatePhysics() {
-    checkScore(); 
-    world.step(timeStep);
-
-    // CRITICAL: Mesh is ONLY updated from physics body when NOT held
-    if (!isBallHeld) {
-        ballMesh.position.copy(ballBody.position);
-        ballMesh.quaternion.copy(ballBody.quaternion);
-    }
-
-    if (ballBody.position.y < -5) {
-        holdBall();
-    }
-}
             renderer.render(scene, camera);
         }
     </script>
