@@ -65,7 +65,7 @@
   const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setClearColor(0xf0f0f0); // Light gray background to match the screenshot
+  renderer.setClearColor(0xf0f0f0); 
   document.body.appendChild(renderer.domElement);
 
   // Add orbit controls for user interaction
@@ -83,6 +83,10 @@
   // --- Basketball Hoop Model Dimensions (Scaled for Scene) ---
   // Using a 1:10 scale (1 unit = 10 inches for simplicity)
   const SCALE = 1/10; 
+  
+  // NBA Rim Height is 10 feet = 120 inches
+  const RIM_HEIGHT_INCHES = 120;
+  const RIM_Y_POSITION = RIM_HEIGHT_INCHES * SCALE; // 12 units in this scaled scene
 
   // Backboard (72" x 42" x 2")
   const backboardWidth = 72 * SCALE;
@@ -90,13 +94,10 @@
   const backboardDepth = 2 * SCALE;
   
   // Rim (18" internal diameter)
-  const rimOuterRadius = 18 * SCALE / 2 + 1 * SCALE / 2; // ~19" outer diameter
+  const rimOuterRadius = 18 * SCALE / 2 + 1 * SCALE / 2;
   const rimTubeRadius = 1 * SCALE / 2; 
 
-  // Backboard Position
-  const backboardY = 10 * backboardHeight; // Elevate it for better view
-
-  // --- 1. Backboard (Transparent and correct large dimensions) ---
+  // --- 1. Backboard ---
   const backboardGeometry = new THREE.BoxGeometry(backboardWidth, backboardHeight, backboardDepth);
   const backboardMaterial = new THREE.MeshPhongMaterial({
     color: 0xffffff,
@@ -105,6 +106,8 @@
     shininess: 150
   });
   const backboard = new THREE.Mesh(backboardGeometry, backboardMaterial);
+  // Position so the rim (which attaches to the bottom center) is at RIM_Y_POSITION
+  const backboardY = RIM_Y_POSITION + backboardHeight / 2 - 6 * SCALE; // adjust up a bit
   backboard.position.set(0, backboardY, 0);
   scene.add(backboard);
 
@@ -114,13 +117,13 @@
   const paddingGeometry = new THREE.BoxGeometry(backboardWidth, paddingHeight, paddingDepth);
   const paddingMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Safety Red
   const padding = new THREE.Mesh(paddingGeometry, paddingMaterial);
-  padding.position.set(0, backboardY - backboardHeight / 2 + paddingHeight / 2, backboardDepth / 2 + paddingDepth / 2 - 0.05); // slightly in front
+  padding.position.set(0, backboardY - backboardHeight / 2 + paddingHeight / 2, backboardDepth / 2 + paddingDepth / 2 - 0.05);
   scene.add(padding);
 
   // --- Target Box Outline (24"x18") ---
   const targetBoxWidth = 24 * SCALE;
   const targetBoxHeight = 18 * SCALE;
-  const targetBoxY = backboardY - (backboardHeight / 2) + (targetBoxHeight / 2) + paddingHeight; // Positioned above the padding
+  const targetBoxY = backboardY - (backboardHeight / 2) + (targetBoxHeight / 2) + paddingHeight;
   
   const targetBoxShape = new THREE.Shape();
   targetBoxShape.moveTo(-targetBoxWidth / 2, -targetBoxHeight / 2);
@@ -132,55 +135,75 @@
   const targetBoxGeometry = new THREE.ShapeGeometry(targetBoxShape);
   const targetBoxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
   const targetBoxLine = new THREE.LineSegments(new THREE.EdgesGeometry(targetBoxGeometry), targetBoxMaterial);
-  targetBoxLine.position.set(0, targetBoxY, backboardDepth / 2 + 0.01); // Positioned on the backboard
+  targetBoxLine.position.set(0, targetBoxY, backboardDepth / 2 + 0.01);
   scene.add(targetBoxLine);
 
   // --- Rim (18" internal diameter) ---
   const rimGeometry = new THREE.TorusGeometry(rimOuterRadius, rimTubeRadius, 16, 100);
-  const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff4500 }); // Orange-Red
+  const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff4500 });
   const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-  const rimY = backboardY - backboardHeight / 2 + paddingHeight;
-  rim.position.set(0, rimY, backboardDepth / 2 + rimOuterRadius - 0.5 * SCALE);
-  rim.rotation.x = Math.PI / 2; // Rotate to face forward
+  const rimZOffset = backboardDepth / 2 + rimOuterRadius - 0.5 * SCALE;
+  rim.position.set(0, RIM_Y_POSITION, rimZOffset);
+  rim.rotation.x = Math.PI / 2;
   scene.add(rim);
 
   // --- Simplified Net (Tapered Cone Geometry) ---
-  const netHeight = 15 * SCALE; // Example height
+  const netHeight = 15 * SCALE;
   const netTopRadius = rimOuterRadius - rimTubeRadius * 2;
-  const netBottomRadius = 5 * SCALE; // Tapered bottom
+  const netBottomRadius = 5 * SCALE;
   
-  const netGeometry = new THREE.CylinderGeometry(netTopRadius, netBottomRadius, netHeight, 32, 1, true); // true for open ended
+  const netGeometry = new THREE.CylinderGeometry(netTopRadius, netBottomRadius, netHeight, 32, 1, true);
   const netMaterial = new THREE.MeshBasicMaterial({ 
     color: 0xcccccc, 
-    wireframe: true, // Use wireframe for a net look
+    wireframe: true,
     transparent: true,
     opacity: 0.5 
   }); 
   const net = new THREE.Mesh(netGeometry, netMaterial);
-  net.position.set(rim.position.x, rimY - netHeight / 2, rim.position.z);
+  net.position.set(rim.position.x, RIM_Y_POSITION - netHeight / 2, rim.position.z);
   scene.add(net);
   
   // --- Simple Support Structure ---
-  // Connect the rim to the backboard
   const supportLength = rim.position.z - backboardDepth / 2 - 0.5 * SCALE; 
   const supportGeometry = new THREE.BoxGeometry(5 * SCALE, 5 * SCALE, supportLength);
-  const supportMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 }); // Gray for metal
+  const supportMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
   const support = new THREE.Mesh(supportGeometry, supportMaterial);
-  support.position.set(0, rimY, backboardDepth / 2 + supportLength / 2);
+  support.position.set(0, RIM_Y_POSITION, backboardDepth / 2 + supportLength / 2);
   scene.add(support);
   
-  // A simple representation of the pole/stand
-  const poleGeometry = new THREE.CylinderGeometry(10 * SCALE, 10 * SCALE, backboardY + backboardHeight / 2, 32);
+  // --- CORRECTED Pole/Stand ---
+  const poleBaseY = 0; // The bottom of the pole sits on the floor (Y=0)
+  const poleHeight = RIM_Y_POSITION - poleBaseY; // Total height from floor to rim level
+  const poleRadius = 10 * SCALE;
+  const poleGeometry = new THREE.CylinderGeometry(poleRadius, poleRadius, poleHeight, 32);
   const poleMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
   const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-  pole.position.set(0, (backboardY + backboardHeight / 2) / 2, -10 * SCALE);
+  pole.position.set(0, poleHeight / 2, -10 * SCALE); // Center position is half the height
   scene.add(pole);
+
+
+  // --- NEW: Basketball Court Floor ---
+  const courtWidth = 30; // 300 inches, or 25 feet (scaled)
+  const courtDepth = 40; // 400 inches, or 33.3 feet (scaled)
+  
+  const floorGeometry = new THREE.PlaneGeometry(courtWidth, courtDepth);
+  // Using a common indoor court wood texture color
+  const floorMaterial = new THREE.MeshPhongMaterial({ 
+    color: 0xcc9966, // Wood color
+    side: THREE.DoubleSide
+  });
+  
+  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+  floor.rotation.x = Math.PI / 2; // Rotate the plane to be horizontal
+  floor.position.y = 0; // Place it at the ground level (Y=0)
+  floor.position.z = 10; // Shift it back so the hoop is at the front edge for a nice view
+  scene.add(floor);
 
 
   // --- Render Loop ---
   function animate() {
     requestAnimationFrame(animate);
-    controls.update(); // only required if controls.enableDamping is set to true
+    controls.update();
     renderer.render(scene, camera);
   }
   
