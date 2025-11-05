@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Detailed Hoop Model</title>
+<title>Detailed Hoop Model - V3</title>
 <style>
   body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
   canvas { display: block; }
@@ -70,15 +70,21 @@
 
   // Add orbit controls for user interaction
   const controls = new THREE.OrbitControls(camera, renderer.domElement);
-  camera.position.set(0, 3, 5); // Initial camera position
+  // *** ADJUSTMENT 2: Lowered Camera to view floor ***
+  camera.position.set(0, 5, 15); // Moved camera down and back 
   controls.update();
 
   // Add lighting
-  const ambientLight = new THREE.AmbientLight(0x404040, 5); // soft white light
+  const ambientLight = new THREE.AmbientLight(0x404040, 5);
   scene.add(ambientLight);
   const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
   directionalLight.position.set(5, 10, 7);
   scene.add(directionalLight);
+  
+  // *** NEW: Grid Helper to verify ground level (Y=0) ***
+  const gridHelper = new THREE.GridHelper(30, 30, 0x0000ff, 0x888888);
+  gridHelper.position.y = 0.01; // Slightly above the floor to avoid z-fighting
+  scene.add(gridHelper);
   
   // --- Basketball Hoop Model Dimensions (Scaled for Scene) ---
   // Using a 1:10 scale (1 unit = 10 inches for simplicity)
@@ -106,21 +112,20 @@
     shininess: 150
   });
   const backboard = new THREE.Mesh(backboardGeometry, backboardMaterial);
-  // Position so the rim (which attaches to the bottom center) is at RIM_Y_POSITION
-  const backboardY = RIM_Y_POSITION + backboardHeight / 2 - 6 * SCALE; // adjust up a bit
+  const backboardY = RIM_Y_POSITION + backboardHeight / 2 - 6 * SCALE; 
   backboard.position.set(0, backboardY, 0);
   scene.add(backboard);
 
-  // --- Backboard Padding (Thick bottom padding - Safety Red) ---
+  // --- Backboard Padding (Safety Red) ---
   const paddingHeight = 6 * SCALE;
   const paddingDepth = 4 * SCALE;
   const paddingGeometry = new THREE.BoxGeometry(backboardWidth, paddingHeight, paddingDepth);
-  const paddingMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Safety Red
+  const paddingMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
   const padding = new THREE.Mesh(paddingGeometry, paddingMaterial);
   padding.position.set(0, backboardY - backboardHeight / 2 + paddingHeight / 2, backboardDepth / 2 + paddingDepth / 2 - 0.05);
   scene.add(padding);
 
-  // --- Target Box Outline (24"x18") ---
+  // --- Target Box Outline ---
   const targetBoxWidth = 24 * SCALE;
   const targetBoxHeight = 18 * SCALE;
   const targetBoxY = backboardY - (backboardHeight / 2) + (targetBoxHeight / 2) + paddingHeight;
@@ -138,7 +143,7 @@
   targetBoxLine.position.set(0, targetBoxY, backboardDepth / 2 + 0.01);
   scene.add(targetBoxLine);
 
-  // --- Rim (18" internal diameter) ---
+  // --- Rim ---
   const rimGeometry = new THREE.TorusGeometry(rimOuterRadius, rimTubeRadius, 16, 100);
   const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff4500 });
   const rim = new THREE.Mesh(rimGeometry, rimMaterial);
@@ -171,9 +176,9 @@
   support.position.set(0, RIM_Y_POSITION, backboardDepth / 2 + supportLength / 2);
   scene.add(support);
   
-  // --- CORRECTED Pole/Stand ---
-  const poleBaseY = 0; // The bottom of the pole sits on the floor (Y=0)
-  const poleHeight = RIM_Y_POSITION - poleBaseY; // Total height from floor to rim level
+  // *** ADJUSTMENT 1: CORRECTED Pole/Stand ***
+  const poleBaseY = 0; 
+  const poleHeight = RIM_Y_POSITION - poleBaseY; 
   const poleRadius = 10 * SCALE;
   const poleGeometry = new THREE.CylinderGeometry(poleRadius, poleRadius, poleHeight, 32);
   const poleMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
@@ -182,21 +187,20 @@
   scene.add(pole);
 
 
-  // --- NEW: Basketball Court Floor ---
-  const courtWidth = 30; // 300 inches, or 25 feet (scaled)
-  const courtDepth = 40; // 400 inches, or 33.3 feet (scaled)
+  // --- Basketball Court Floor ---
+  const courtWidth = 30;
+  const courtDepth = 40;
   
   const floorGeometry = new THREE.PlaneGeometry(courtWidth, courtDepth);
-  // Using a common indoor court wood texture color
   const floorMaterial = new THREE.MeshPhongMaterial({ 
     color: 0xcc9966, // Wood color
     side: THREE.DoubleSide
   });
   
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = Math.PI / 2; // Rotate the plane to be horizontal
-  floor.position.y = 0; // Place it at the ground level (Y=0)
-  floor.position.z = 10; // Shift it back so the hoop is at the front edge for a nice view
+  floor.rotation.x = Math.PI / 2; 
+  floor.position.y = 0; // Place it exactly at the ground level (Y=0)
+  floor.position.z = 10;
   scene.add(floor);
 
 
