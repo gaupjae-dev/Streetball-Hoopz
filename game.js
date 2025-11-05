@@ -18,12 +18,22 @@ const shotMeterContainer = document.getElementById('shot-meter-container');
 function initScene() {
     // --- THREE.JS ---
     scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a1a); // Dark background
+    
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1.8, 5);
+    camera.position.set(0, 1.8, 5); // Player starting position
+    
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.getElementById('scene-container').appendChild(renderer.domElement);
-    scene.add(new THREE.AmbientLight(0x404040, 5));
+
+    // --- LIGHTING FIX: Strong Directional Light ---
+    const ambientLight = new THREE.AmbientLight(0x404040, 5);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 5); // Increased intensity to 5
+    directionalLight.position.set(10, 10, 10);
+    scene.add(directionalLight);
 
     // --- CANNON.JS ---
     world = new CANNON.World();
@@ -40,14 +50,14 @@ function initScene() {
 }
 
 function createCourt() {
-    // Three.js Ground
+    // Three.js Ground Mesh (Visible)
     const courtGeometry = new THREE.PlaneGeometry(30, 30);
     const courtMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff, side: THREE.DoubleSide });
     const courtMesh = new THREE.Mesh(courtGeometry, courtMaterial);
-    courtMesh.rotation.x = -Math.PI / 2;
+    courtMesh.rotation.x = -Math.PI / 2; // Rotate to lay flat
     scene.add(courtMesh);
 
-    // Cannon.js Ground
+    // Cannon.js Ground Body (Physics)
     const courtShape = new CANNON.Plane();
     const courtBody = new CANNON.Body({ mass: 0, shape: courtShape });
     courtBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
@@ -56,8 +66,11 @@ function createCourt() {
 
 function createBall() {
     const ballRadius = 0.24;
+    // Three.js Ball Mesh (Visible)
     ballMesh = new THREE.Mesh(new THREE.SphereGeometry(ballRadius, 32, 32), new THREE.MeshPhongMaterial({ color: 0xff8c00 }));
+    // Cannon.js Ball Body (Physics)
     ballBody = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(ballRadius) });
+    
     resetBall();
     world.addBody(ballBody);
     scene.add(ballMesh);
