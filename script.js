@@ -14,8 +14,8 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 // Add the renderer's canvas to the HTML body
 document.body.appendChild(renderer.domElement); 
 
-// Position the camera to look at the hoop
-camera.position.set(0, 3, 8); // x, y, z
+// Position the camera further back to see the whole scene
+camera.position.set(0, 5, 15); // Move camera back and up
 
 // Add Lighting (Crucial for seeing materials with shading)
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Soft white light
