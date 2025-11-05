@@ -34,65 +34,92 @@ scene.add(directionalLight);
 // 2. Hoop Creation Function (The detailed model)
 // -------------------------------------------------------
 
+// Function to create the detailed basketball hoop model
 function createBasketballHoop() {
-    // A group to hold all parts of the hoop so they can be moved/rotated as one
     const hoopGroup = new THREE.Group();
+    const rimY = 3.05; // Standard rim height in meters
+    const backboardWidth = 1.83;  // 72 inches
+    const backboardHeight = 1.07; // 42 inches
+    const backboardThickness = 0.02; 
     
-    // --- Backboard (72" x 42" clear acrylic) ---
-    const backboardWidth = 1.83;  // ~72 inches
-    const backboardHeight = 1.07; // ~42 inches
-    const backboardThickness = 0.02; // Thin
-    
+    // --- 1. Backboard (72" x 42" clear acrylic) ---
     const backboardGeometry = new THREE.BoxGeometry(backboardWidth, backboardHeight, backboardThickness);
     const backboardMaterial = new THREE.MeshPhongMaterial({ 
         color: 0xffffff, 
         transparent: true, 
-        opacity: 0.7 
+        opacity: 0.7,
+        side: THREE.DoubleSide // Ensure it's visible from both sides
     });
     const backboard = new THREE.Mesh(backboardGeometry, backboardMaterial);
-    
-    // Position the backboard (center at 3.95m up)
     backboard.position.set(0, 3.95, -2); 
+    backboard.receiveShadow = true;
     hoopGroup.add(backboard);
+
+    // --- 2. Target Box Outline (24"x18") ---
+    const targetBoxW = 0.61; // 24 inches
+    const targetBoxH = 0.46; // 18 inches
     
-    // --- Rim (18" internal diameter) ---
-    const rimRadius = 0.457 / 2; // Half of 18 inches
-    const tubeDiameter = 0.02;    // Thickness of the metal tube
+    // Define the 8 corners of the box for the line segments
+    const points = [
+        // Top edge
+        new THREE.Vector3( -targetBoxW/2,  targetBoxH/2, backboardThickness/2 + 0.001 ),
+        new THREE.Vector3(  targetBoxW/2,  targetBoxH/2, backboardThickness/2 + 0.001 ),
+        
+        // Right edge
+        new THREE.Vector3(  targetBoxW/2,  targetBoxH/2, backboardThickness/2 + 0.001 ),
+        new THREE.Vector3(  targetBoxW/2, -targetBoxH/2, backboardThickness/2 + 0.001 ),
+        
+        // Bottom edge
+        new THREE.Vector3(  targetBoxW/2, -targetBoxH/2, backboardThickness/2 + 0.001 ),
+        new THREE.Vector3( -targetBoxW/2, -targetBoxH/2, backboardThickness/2 + 0.001 ),
+        
+        // Left edge
+        new THREE.Vector3( -targetBoxW/2, -targetBoxH/2, backboardThickness/2 + 0.001 ),
+        new THREE.Vector3( -targetBoxW/2,  targetBoxH/2, backboardThickness/2 + 0.001 )
+    ];
+    
+    const targetGeometry = new THREE.BufferGeometry().setFromPoints( points );
+    const targetMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+    const targetBox = new THREE.LineSegments(targetGeometry, targetMaterial);
+    
+    // Position the target box on the backboard, adjusted so the bottom is 0.15m above the rim height
+    const targetCenterY = rimY + 0.15 + (targetBoxH / 2); 
+    targetBox.position.set(backboard.position.x, targetCenterY, backboard.position.z + backboardThickness / 2);
+
+    hoopGroup.add(targetBox);
+
+    // --- 3. Thick Bottom Padding (Safety Red) ---
+    const paddingHeight = 0.1; 
+    const paddingDepth = backboardThickness * 3; // Make it visibly thick
+    
+    const paddingGeometry = new THREE.BoxGeometry(backboardWidth, paddingHeight, paddingDepth);
+    const paddingMaterial = new THREE.MeshPhongMaterial({ color: 0xcc0000 }); // Safety Red
+    const padding = new THREE.Mesh(paddingGeometry, paddingMaterial);
+    
+    // Position the padding at the very bottom of the backboard
+    const paddingY = backboard.position.y - (backboardHeight / 2) + (paddingHeight / 2);
+    padding.position.set(backboard.position.x, paddingY, backboard.position.z);
+    
+    hoopGroup.add(padding);
+
+    // --- 4. Rim (18" internal diameter) ---
+    const rimRadius = 0.457 / 2; 
+    const tubeDiameter = 0.02;  
     
     const rimGeometry = new THREE.TorusGeometry(rimRadius, tubeDiameter, 16, 100);
     const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 }); // Red material
     const rim = new THREE.Mesh(rimGeometry, rimMaterial);
     
-    // Rotate 90 degrees to face forward
     rim.rotation.x = Math.PI / 2; 
-    
-    // Position relative to the backboard for the standard 10ft (3.05m) height
-    const rimY = 3.05; 
-    const rimZ = backboard.position.z + (backboardThickness / 2) + 0.45; // Extend forward
+    const rimZ = backboard.position.z + (backboardThickness / 2) + 0.45; 
     rim.position.set(0, rimY, rimZ); 
     
     hoopGroup.add(rim);
 
-    // --- Net (Simplified Cone - wireframe for net effect) ---
-    const netRadiusBottom = 0.3; 
-    const netHeight = 0.45;
-    
-    // Open-ended cone for the net structure
-    const netGeometry = new THREE.ConeGeometry(netRadiusBottom, netHeight, 32, 1, true); 
-    const netMaterial = new THREE.MeshBasicMaterial({ 
-        color: 0xf5f5f5, 
-        wireframe: true // Makes it look like a mesh net
-    }); 
-    const net = new THREE.Mesh(netGeometry, netMaterial);
-    
-    // Position it below the rim
-    net.rotation.x = Math.PI; // Rotate to hang down
-    net.position.copy(rim.position);
-    net.position.y -= (netHeight / 2);
-    
-    hoopGroup.add(net);
-    
-    // --- (Optional) Floor Plane for reference ---
+    // --- 5. Net (Placeholder) ---
+    // You would create your net mesh here and add it to hoopGroup.
+
+    // --- 6. (Optional) Floor Plane for reference ---
     const floor = new THREE.Mesh(
         new THREE.PlaneGeometry(20, 20),
         new THREE.MeshStandardMaterial({ color: 0x228b22 }) // Green court color
@@ -101,7 +128,7 @@ function createBasketballHoop() {
     floor.position.y = 0;
     hoopGroup.add(floor);
     
-    return hoopGroup;
+    return hoopGroup; // Corrected: function returns here
 }
 
 
