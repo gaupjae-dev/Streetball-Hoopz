@@ -452,6 +452,8 @@
             hasScoredThisShot = false; 
             ballBody.mass = ORIGINAL_BALL_MASS; 
             ballBody.updateMassProperties();
+            // FIX: Tell the physics engine to start simulating this body immediately
+            ballBody.wakeUp(); 
 
             // Get the camera's world direction (where the player is looking)
             const direction = new THREE.Vector3();
