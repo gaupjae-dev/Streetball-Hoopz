@@ -2,8 +2,8 @@ body {
     margin: 0;
     overflow: hidden; /* Prevent scroll bars */
 }
-#renderCanvas {
+canvas {
     display: block;
-    width: 100vw; /* Viewport Width */
-    height: 100vh; /* Viewport Height */
+    width: 100vw; 
+    height: 100vh;
 }
