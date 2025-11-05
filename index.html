@@ -3,145 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Basketball Game 3D TPV and Shot Meter with Shot Outcomes</title>
+    <title>THE G.O.A.T. PROJECT</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- THREE.js library -->
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- CANNON.js Physics library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            margin: 0;
-            overflow: hidden;
-            height: 100vh;
-            background-color: #e5e7eb; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        #scene-container {
-            width: 100%;
-            height: 100%;
-        }
-        #controls-info {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            text-align: center;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            z-index: 10;
-        }
-        #score-display {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background-color: #fca5a5; /* Light red/orange */
-            color: #450a0a; /* Dark text */
-            padding: 12px 20px;
-            border-radius: 12px;
-            font-size: 1.5rem;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(252, 165, 165, 0.5);
-            border: 2px solid #ef4444;
-            z-index: 10;
-        }
-
-        /* --- Shot Meter Styling --- */
-        #shot-meter-container {
-            position: absolute;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            height: 20px;
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 2px solid #3b82f6;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-            transition: opacity 0.1s;
-        }
-
-        #shot-meter-fill {
-            height: 100%;
-            width: 0%;
-            background-color: #3b82f6; /* Blue */
-            transition: background-color 0.1s;
-        }
-
-        /* Sweet spot definition: 40% to 70% of the bar */
-        #shot-meter-sweet-spot {
-            position: absolute;
-            top: 0;
-            height: 100%;
-            width: 30%; /* 70% - 40% = 30% width */
-            left: 40%; /* Starts at 40% */
-            background-color: rgba(16, 185, 129, 0.6); /* Green */
-            z-index: 1;
-        }
-        
-        /* Pulse for overcharge */
-        @keyframes pulse-glow {
-            0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.7); }
-            50% { box-shadow: 0 0 15px rgba(239, 68, 68, 1); }
-            100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.7); }
-        }
-        .pulse-glow {
-            animation: pulse-glow 0.5s infinite alternate;
-        }
-
-
-        /* --- Camera Toggle Styling --- */
-        #camera-toggle {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background-color: rgba(255, 255, 255, 0.9);
-            color: #1f2937;
-            padding: 10px;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-            z-index: 10;
-            transition: background-color 0.2s;
-        }
-        #camera-toggle:hover {
-            background-color: #d1d5db;
-        }
-
-        canvas {
-            display: block;
-        }
-    </style>
+    
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="scene-container"></div>
-    
-    <div id="camera-toggle" onclick="switchCameraView()">
-        <!-- Default FPV Icon (Pointer) - Using a simple SVG to represent FPV -->
-        <svg id="camera-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+
+    <div class="main-menu-container" id="main-menu-container">
+        
+        <div class="main-menu-top">
+            
+            <h1 class="main-title">THE G.O.A.T. PROJECT</h1>
+            
+            <div class="main-modes-wrapper">
+                <button class="menu-button" onclick="quickPlay()">QUICK PLAY (3D)</button>
+                <button class="menu-button" onclick="loadMissions()">MISSIONS</button>
+                <button class="menu-button" onclick="loadMyHub()">MY HUB</button>
+            </div>
+        </div>
+
+        <div id="user-info" class="absolute top-2 right-4 text-xs sm:text-sm text-neon-blue text-center hidden"></div>
+
+        <div class="main-menu-bottom">
+            <button class="menu-button" onclick="loadOptions()">OPTIONS</button>
+            <button class="menu-button" onclick="quitGame()">QUIT</button>
+        </div>
+        
     </div>
 
-    <div id="shot-meter-container" class="hidden">
-        <div id="shot-meter-sweet-spot"></div>
-        <div id="shot-meter-fill"></div>
+    <div id="quickplay-container" class="quickplay-game-mode hidden">
+        <div id="scene-container"></div>
+        
+        <div id="camera-toggle" onclick="switchCameraView()">
+            <svg id="camera-icon" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </div>
+
+        <div id="shot-meter-container" class="hidden">
+            <div id="shot-meter-sweet-spot"></div>
+            <div id="shot-meter-fill"></div>
+        </div>
+        
+        <div id="controls-info">
+            Movement: **W A S D** | Look: **Mouse Drag** | Shoot: **SPACEBAR** | Pickup: **Walk over the ball**
+        </div>
+        
+        <div id="score-display">
+            Score: <span id="score-value">0</span>
+        </div>
+        
+        <button id="quickplay-exit-button" class="menu-button absolute top-4 left-4" onclick="exitQuickPlay()">EXIT</button>
+    </div>
+
+    <div id="missions-log-container" class="missions-log-container hidden">
+        <h2>MISSIONS LOG</h2>
+        <div id="mission-list">
+            <button class="mission-item" onclick="loadMission(1)">Mission 1: Training Drill - Free Throws</button>
+            <button class="mission-item" onclick="loadMission(2)">Mission 2: Contract Signing - Agent's Offer</button>
+            <button class="mission-item" disabled>Mission 3: Lock-in (LOCKED)</button>
+        </div>
+        <button class="menu-button" onclick="loadMainMenu()">BACK</button>
+    </div>
+
+    <div id="my-player-container" class="my-player-container hidden">
+        <h2>MY HUB</h2>
+        <p>Name: <span id="player-name">Rookie</span></p>
+        <p>Overall Rating: <span id="player-ovr">50</span></p>
+        <p>XP Level: <span id="player-level">1</span></p>
+        <p>XP Progress:</p>
+        <div class="progress-bar-container"><div id="xp-progress-bar" class="progress-bar"></div></div>
+        <button class="menu-button" onclick="loadMainMenu()">BACK</button>
+    </div>
+
+    <div id="options-container" class="options-container hidden">
+        <h2>OPTIONS</h2>
+        <p>Volume: 50%</p>
+        <p>Resolution: 1920x1080</p>
+        <p>Graphics: High</p>
+        <button class="menu-button" onclick="loadMainMenu()">BACK</button>
+    </div>
+
+    <div id="quit-container" class="quit-container hidden">
+        <h2>QUIT GAME</h2>
+        <p>Are you sure you want to quit?</p>
+        <button class="menu-button" onclick="confirmQuit()">YES, QUIT</button>
+        <button class="menu-button" onclick="loadMainMenu()">NO, BACK</button>
     </div>
     
-    <div id="controls-info">
-        Movement: **W A S D** | Look: **Mouse Drag** | Shoot: **SPACEBAR (Hold & Release)** | Pickup: **Walk over the ball**
-    </div>
-    <div id="score-display">
-        Score: <span id="score-value">0</span>
+    <div id="mission-screen" class="mission-screen hidden">
+        <h2 id="mission-title">Mission Title</h2>
+        <p id="mission-description">Description goes here.</p>
+        <div id="mission-content" class="mission-content">
+            </div>
+        <div id="mission-feedback"></div>
+        <button id="mission-back-button" class="menu-button" onclick="loadMissions()">BACK TO MISSIONS</button>
     </div>
 
     <script>
+        // --- GAME STATE AND INITIAL SETUP ---
+        let currentScreen = 'main-menu-container';
+        let gameInitialized = false; // Tracks if the 3D scene has been set up
+        let animFrame; // Global variable to hold the animation frame ID
+
+        // Placeholder functions for sub-screen navigation (you likely have these already)
+        function loadMainMenu() {
+            hideAllScreens();
+            document.getElementById('main-menu-container').classList.remove('hidden');
+            currentScreen = 'main-menu-container';
+        }
+        function loadMissions() {
+            hideAllScreens();
+            document.getElementById('missions-log-container').classList.remove('hidden');
+            currentScreen = 'missions-log-container';
+        }
+        function loadMyHub() {
+            hideAllScreens();
+            document.getElementById('my-player-container').classList.remove('hidden');
+            currentScreen = 'my-player-container';
+        }
+        function loadOptions() {
+            hideAllScreens();
+            document.getElementById('options-container').classList.remove('hidden');
+            currentScreen = 'options-container';
+        }
+        function quitGame() {
+            hideAllScreens();
+            document.getElementById('quit-container').classList.remove('hidden');
+            currentScreen = 'quit-container';
+        }
+        function confirmQuit() {
+            alert("Game closed. Thanks for playing!");
+            window.close(); // Note: modern browsers often block script-initiated closing
+        }
+        function loadMission(id) {
+            // Logic to load specific mission content
+            hideAllScreens();
+            document.getElementById('mission-screen').classList.remove('hidden');
+            currentScreen = 'mission-screen';
+            // Placeholder: you'll need a proper handler to load mission content here
+            document.getElementById('mission-title').innerText = `MISSION ${id}`;
+            document.getElementById('mission-description').innerText = `Starting Mission ${id} training...`;
+            document.getElementById('mission-content').innerHTML = `Mission ${id} content goes here.`;
+        }
+
+        function hideAllScreens() {
+            document.getElementById('main-menu-container').classList.add('hidden');
+            document.getElementById('missions-log-container').classList.add('hidden');
+            document.getElementById('my-player-container').classList.add('hidden');
+            document.getElementById('options-container').classList.add('hidden');
+            document.getElementById('quit-container').classList.add('hidden');
+            document.getElementById('mission-screen').classList.add('hidden');
+            document.getElementById('quickplay-container').classList.add('hidden');
+        }
+
+        // =========================================================================
+        // QUICK PLAY MODE START/EXIT LOGIC
+        // =========================================================================
+
+        function quickPlay() {
+             startQuickPlay();
+        }
+
+        window.startQuickPlay = function() {
+            hideAllScreens();
+            document.getElementById('quickplay-container').classList.remove('hidden');
+
+            if (!gameInitialized) {
+                init(); 
+                setupPlayerControls(); 
+                gameInitialized = true;
+            }
+            
+            animate(); 
+            window.addEventListener('resize', onWindowResize, false);
+            // Setup the initial FPV camera icon (Pointer)
+            document.getElementById('camera-icon').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>';
+        }
+        
+        window.exitQuickPlay = function() {
+            // Stop the animation loop
+            if (animFrame) {
+                cancelAnimationFrame(animFrame);
+            }
+             
+            // Clear movement keys (so player doesn't keep moving in the menu)
+            moveForward = moveBackward = moveLeft = moveRight = false;
+            isChargingShot = false;
+
+            // Hide quick play and show main menu
+            document.getElementById('quickplay-container').classList.add('hidden');
+            loadMainMenu();
+
+            // Reset score for next time
+            score = 0;
+            document.getElementById('score-value').innerText = score;
+        }
+
+        // =========================================================================
+        // QUICK PLAY 3D GAME LOGIC (Copied from your provided code)
+        // =========================================================================
+
         // --- Game Constants ---
         const HOOP_HEIGHT = 3.05; 
         const RIM_RADIUS = 0.457 / 2; // ~0.2285m
@@ -190,15 +255,6 @@
         const TPV_CAMERA_OFFSET = new THREE.Vector3(0, 4, 6); 
         const TPV_LOOKAT_LOCAL = new THREE.Vector3(0, 1.8, -5); 
         
-        window.onload = function () {
-            init();
-            setupPlayerControls();
-            animate();
-            window.addEventListener('resize', onWindowResize, false);
-            // Setup the initial FPV camera icon (Pointer)
-            document.getElementById('camera-icon').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>';
-        }
-
         // --- INIT AND MODELING FUNCTIONS ---
         function init() {
             const container = document.getElementById('scene-container');
@@ -209,7 +265,7 @@
 
             // --- THREE.js Setup ---
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xcccccc); 
+            scene.background = new THREE.Color(0x333333); // Darker background for neon theme
 
             camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
             
@@ -228,6 +284,7 @@
             const ambientLight = new THREE.AmbientLight(0x404040, 2);
             scene.add(ambientLight);
 
+            // Directional light for shadows
             const directionalLight = new THREE.DirectionalLight(0xffffff, 3.5);
             directionalLight.position.set(10, 20, 10);
             directionalLight.castShadow = true;
@@ -242,7 +299,6 @@
             directionalLight.shadow.camera.top = 30;
             directionalLight.shadow.camera.bottom = -30;
 
-            
             // --- CANNON.js Setup ---
             world = new CANNON.World();
             world.gravity.set(0, -9.82, 0); 
@@ -275,14 +331,15 @@
             const material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(geometry, material);
             mesh.rotation.x = -Math.PI / 2; 
-            mesh.rotation.z = yRotation;    
+            mesh.rotation.z = yRotation;  
             mesh.position.set(xPos, 0.015, zPos); 
             return mesh;
         }
 
         function createCourt(courtGroup) {
             const courtGeometry = new THREE.PlaneGeometry(COURT_WIDTH * 2, COURT_Z_LENGTH * 2);
-            const courtMaterial = new THREE.MeshLambertMaterial({ color: 0xc46210 }); 
+            // Use a dark, non-reflective material for the court surface
+            const courtMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 }); 
             const court = new THREE.Mesh(courtGeometry, courtMaterial);
             court.rotation.x = -Math.PI / 2;
             court.position.y = -0.1;
@@ -290,13 +347,15 @@
             courtGroup.add(court);
 
             const lineThickness = 0.05;
-            const keyColor = 0x8a2be2; 
+            const keyColor = 0x00c4ff; // Neon Blue for Key
             const freeThrowLineDistance = 5.8;
 
+            // Boundary line (simplified)
             courtGroup.add(createLinePlane(COURT_WIDTH * 2, lineThickness, 0xffffff, 0, 0, 0));
 
+            // Key/Paint Area
             const keyGeometry = new THREE.PlaneGeometry(4.9, freeThrowLineDistance);
-            const keyMaterial = new THREE.MeshBasicMaterial({ color: keyColor });
+            const keyMaterial = new THREE.MeshBasicMaterial({ color: keyColor, transparent: true, opacity: 0.2 }); // Semi-transparent neon blue
             const key = new THREE.Mesh(keyGeometry, keyMaterial);
             key.rotation.x = -Math.PI / 2;
             key.position.y = 0.005;
@@ -308,6 +367,7 @@
             const BACKBOARD_WIDTH = 1.83, BACKBOARD_HEIGHT = 1.07, BACKBOARD_THICKNESS = 0.03;
             const NET_LENGTH = 0.45;
             
+            // Backboard - Neon Pink/White
             const backboardGeometry = new THREE.BoxGeometry(BACKBOARD_WIDTH, BACKBOARD_HEIGHT, BACKBOARD_THICKNESS);
             const backboardMaterial = new THREE.MeshPhongMaterial({color: 0xffffff, transparent: true, opacity: 0.8, shininess: 150});
             const backboard = new THREE.Mesh(backboardGeometry, backboardMaterial);
@@ -315,14 +375,16 @@
             backboard.castShadow = true; 
             hoopGroup.add(backboard);
 
+            // Rim - Neon Pink
             const rimGeometry = new THREE.TorusGeometry(RIM_RADIUS, RIM_TUBE_RADIUS, 12, 60);
-            const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff4500, shininess: 80 });
+            const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff00ff, shininess: 80 }); // Neon Pink
             const rim = new THREE.Mesh(rimGeometry, rimMaterial);
             rim.rotation.x = Math.PI / 2;
             rim.position.set(0, RIM_CENTER_Y, RIM_CENTER_Z_OFFSET + RIM_RADIUS); 
             rim.castShadow = true; 
             hoopGroup.add(rim);
-
+            
+            // Net - Wireframe White
             const netGeometry = new THREE.CylinderGeometry(RIM_RADIUS, RIM_RADIUS * 0.5, NET_LENGTH, 60, 1, true); 
             const netMaterial = new THREE.MeshPhongMaterial({color: 0xffffff, transparent: true, opacity: 0.8, wireframe: true, side: THREE.DoubleSide});
             const net = new THREE.Mesh(netGeometry, netMaterial);
@@ -354,7 +416,7 @@
 
         function createBallModel(ballMat) {
             const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
-            const ballMaterial = new THREE.MeshLambertMaterial({ color: 0xff8c00 });
+            const ballMaterial = new THREE.MeshLambertMaterial({ color: 0xff8c00 }); // Orange
             ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
             ballMesh.castShadow = true;
             scene.add(ballMesh);
@@ -408,30 +470,26 @@
             if (chargeTime >= SWEET_SPOT_MIN && chargeTime <= SWEET_SPOT_MAX) {
                 // --- PERFECT SHOT (SWISH/MAKE) ---
                 shotType = 'Make';
-                // Aim for a high, clean arc
                 launchVector = direction.clone().multiplyScalar(LAUNCH_POWER);
                 launchVector.y += 3.5; 
                 
-                // For a guaranteed swish, slightly reduce ball restitution (bounciness) to avoid excessive rim physics
                 ballBody.material.restitution = 0.5; 
                 
             } else if (chargeTime < SWEET_SPOT_MIN) {
                 // --- UNDERCHARGED SHOT (FRONT RIM MISS) ---
                 shotType = 'Miss_Front';
-                // Aim lower and shorter
                 launchVector = direction.clone().multiplyScalar(LAUNCH_POWER * 0.9);
                 launchVector.y += 1.5; 
                 
-                ballBody.material.restitution = 0.7; // Standard physics
+                ballBody.material.restitution = 0.7; 
                 
             } else { // chargeTime > SWEET_SPOT_MAX
                 // --- OVERCHARGED SHOT (BACK RIM/BACKBOARD MISS) ---
                 shotType = 'Miss_Back';
-                // Aim higher and with more overall force
                 launchVector = direction.clone().multiplyScalar(LAUNCH_POWER * 1.1); 
                 launchVector.y += 4.5; 
                 
-                ballBody.material.restitution = 0.7; // Standard physics
+                ballBody.material.restitution = 0.7; 
             }
 
             // Store shot type on the body for scoring check
@@ -439,7 +497,7 @@
 
             const impulse = new CANNON.Vec3(
                 launchVector.x * ORIGINAL_BALL_MASS,
-                launchVector.y * ORIGINAL_BALL_MASS,
+                launchVector.y * LAUNCH_POWER * ORIGINAL_BALL_MASS, // Use LAUNCH_POWER here for y component
                 launchVector.z * ORIGINAL_BALL_MASS
             );
             
@@ -462,7 +520,7 @@
             }
         }
 
-        // --- INPUT AND MOVEMENT LOGIC (Unchanged from last version) ---
+        // --- INPUT AND MOVEMENT LOGIC ---
         function setupPlayerControls() {
             document.addEventListener('keydown', (event) => {
                 switch (event.code) {
@@ -490,7 +548,6 @@
                         if (isChargingShot) {
                             isChargingShot = false;
                             
-                            // Calculate shot power multiplier (clamped between 0 and 1.0)
                             const chargeTime = shotChargeTime;
                             
                             // Hide and reset meter visuals
@@ -508,7 +565,7 @@
             let previousMouseX = 0;
 
             renderer.domElement.addEventListener('mousedown', (event) => {
-                if (event.target.id !== 'camera-toggle') {
+                if (event.target.id === 'scene-container' || event.target.tagName === 'CANVAS') {
                     isDragging = true;
                     previousMouseX = event.clientX;
                 }
@@ -594,7 +651,8 @@
                     score++;
                     hasScoredThisShot = true;
                     document.getElementById('score-value').innerText = score;
-                    console.log("SCORED! (Guaranteed Swish)");
+                    // Reset ball restitution to standard for next shot
+                    ballBody.material.restitution = 0.7; 
                 }
             }
         }
@@ -609,7 +667,6 @@
             }
 
             if (ballBody.position.y < -5) {
-                console.log("Ball out of bounds. Retrieving.");
                 holdBall();
             }
         }
@@ -617,19 +674,20 @@
 
         function onWindowResize() {
             const container = document.getElementById('scene-container');
-            camera.aspect = container.clientWidth / container.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            if (container) {
+                 camera.aspect = container.clientWidth / container.clientHeight;
+                 camera.updateProjectionMatrix();
+                 renderer.setSize(container.clientWidth, container.clientHeight);
+            }
         }
 
         function animate() {
-            requestAnimationFrame(animate);
+            animFrame = requestAnimationFrame(animate);
 
             // --- Shot Meter Update ---
             if (isChargingShot) {
                 shotChargeTime += timeStep;
                 
-                // Calculate charge percentage (clamped at 1.0 for visual meter max)
                 const chargePercent = Math.min(shotChargeTime / MAX_SHOT_CHARGE_TIME, 1.0) * 100;
                 const meterFill = document.getElementById('shot-meter-fill');
                 meterFill.style.width = `${chargePercent}%`;
@@ -644,7 +702,7 @@
                     if (shotChargeTime >= SWEET_SPOT_MIN && shotChargeTime <= SWEET_SPOT_MAX) {
                         meterFill.style.backgroundColor = '#10b981'; // Tailwind green-500
                     } else {
-                        meterFill.style.backgroundColor = '#3b82f6'; // Tailwind blue-500
+                        meterFill.style.backgroundColor = 'var(--neon-blue)'; // Neon blue
                     }
                 }
             }
