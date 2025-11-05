@@ -722,8 +722,48 @@
                 camera.rotation.set(0, 0, 0); 
             }
 
-            updatePlayerMovement();
-            updatePhysics();
+      function updatePlayerMovement() {
+    // ... Player movement vector calculation ...
+    
+    // Holding Logic
+    if (isBallHeld) {
+        const tempPos = BALL_HOLD_OFFSET.clone();
+        camera.localToWorld(tempPos); 
+
+        // CRITICAL: Mesh and Body positions are updated ONLY when held
+        ballMesh.position.copy(tempPos);
+        ballBody.position.copy(tempPos);
+        
+        ballBody.velocity.set(0, 0, 0);
+        ballBody.angularVelocity.set(0, 0, 0);
+    } else {
+        // Retrieval Logic: This ONLY applies when isBallHeld is false (after shooting)
+        const playerPos2D = new THREE.Vector3(player.position.x, 0, player.position.z);
+        const ballPos2D = new THREE.Vector3(ballMesh.position.x, 0, ballMesh.position.z);
+        const playerToBallDistSq = playerPos2D.distanceToSquared(ballPos2D);
+        
+        if (playerToBallDistSq < RETRIEVE_DISTANCE_SQ && ballBody.position.y < 0.5) {
+            const speed = ballBody.velocity.length();
+            if (speed < 1.5) { 
+                holdBall();
+            }
+        }
+    }
+}
+            function updatePhysics() {
+    checkScore(); 
+    world.step(timeStep);
+
+    // CRITICAL: Mesh is ONLY updated from physics body when NOT held
+    if (!isBallHeld) {
+        ballMesh.position.copy(ballBody.position);
+        ballMesh.quaternion.copy(ballBody.quaternion);
+    }
+
+    if (ballBody.position.y < -5) {
+        holdBall();
+    }
+}
             renderer.render(scene, camera);
         }
     </script>
