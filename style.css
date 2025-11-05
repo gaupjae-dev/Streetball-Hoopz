@@ -1,313 +1,167 @@
-/* --- 1. GLOBAL RESET & BASE STYLES --- */
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-
+/* Custom CSS for Neon Theme and Layout */
 :root {
-    /* Define Neon Color Palette */
-    --neon-pink: #ff00ff;
     --neon-blue: #00c4ff;
-    --neon-green: #00ff88;
-    --dark-bg: #111111;
-    --light-gray: #aaaaaa;
-}
-
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
+    --neon-pink: #ff00ff;
+    --dark-bg: #1a1a1a;
 }
 
 body {
-    font-family: 'Roboto Mono', monospace;
+    font-family: 'Consolas', monospace; /* Monospace font for retro-tech look */
     background-color: var(--dark-bg);
-    color: var(--light-gray);
-    min-height: 100vh;
-    overflow: hidden; /* Prevent scrolling for full-screen game */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    color: var(--neon-blue);
+    margin: 0;
+    overflow: hidden; /* Prevent scroll on game screen */
 }
 
-h1, h2 {
-    color: var(--neon-pink);
-    text-shadow: 0 0 5px var(--neon-pink), 0 0 10px var(--neon-pink);
-    margin-bottom: 20px;
-}
-
-/* --- 2. MAIN MENU LAYOUT --- */
-
-.main-menu-container {
+/* Base Menu Container Styling */
+.main-menu-container, .missions-log-container, .my-player-container, .options-container, .quit-container, .mission-screen {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     display: flex;
     flex-direction: column;
-    justify-content: space-between; /* Pushes content to top/bottom */
-    align-items: flex-start;
-    padding: 40px 60px;
-    z-index: 10;
-}
-
-.main-menu-top {
-    /* This container handles the main title and the mode buttons */
-    width: 100%;
-    display: flex;
-    justify-content: space-between; /* Title left, Modes right */
+    justify-content: center;
     align-items: center;
-    flex-grow: 1; /* Allows it to take up most of the vertical space */
+    text-align: center;
+    z-index: 10;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 .main-title {
-    font-size: 5rem;
-    line-height: 1;
-    margin-bottom: 0;
-    text-align: left;
-    /* Vertically center the title within its half of the container */
-    align-self: center; 
+    font-size: 3rem;
+    font-weight: bold;
+    color: var(--neon-blue);
+    text-shadow: 0 0 10px var(--neon-blue), 0 0 20px var(--neon-blue);
+    margin-bottom: 2rem;
 }
 
-.main-modes-wrapper {
+.main-menu-top, .main-menu-bottom {
     display: flex;
     flex-direction: column;
-    gap: 30px;
-    /* Vertically center the buttons within their half of the container */
-    align-self: center;
-    padding-right: 50px; /* Space from the right edge */
+    gap: 1.5rem;
 }
 
-.main-menu-bottom {
-    /* Container for Options/Quit buttons at the bottom-left */
-    display: flex;
-    gap: 30px;
-    align-self: flex-start;
-}
-
-/* --- 3. MENU BUTTON STYLING (Universal) --- */
-
-.menu-button {
+/* Button Styling (menu-button) */
+.menu-button, .mission-item {
     background: transparent;
     border: 2px solid var(--neon-blue);
     color: var(--neon-blue);
-    padding: 15px 30px;
+    padding: 10px 20px;
     font-size: 1.2rem;
+    text-transform: uppercase;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
-    text-shadow: 0 0 5px var(--neon-blue);
-    box-shadow: 0 0 10px rgba(0, 196, 255, 0.5);
-    min-width: 250px;
-    text-align: center;
+    box-shadow: 0 0 5px var(--neon-blue), inset 0 0 5px var(--neon-blue);
 }
 
-.menu-button:hover {
-    background: var(--neon-blue);
+.menu-button:hover:not(:disabled), .mission-item:hover:not(:disabled) {
+    background-color: var(--neon-blue);
     color: var(--dark-bg);
     text-shadow: none;
-    box-shadow: 0 0 20px var(--neon-blue), 0 0 40px var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue);
 }
 
-.menu-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    background: none;
-    color: var(--light-gray);
-    border-color: var(--light-gray);
-    text-shadow: none;
-    box-shadow: none;
-}
-
-/* --- 4. SUB-SCREEN STYLING (Missions, Hub, Options, Quit) --- */
-
-.missions-log-container,
-.my-player-container,
-.options-container,
-.quit-container,
-.mission-screen {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(0, 0, 0, 0.9);
-    border: 3px solid var(--neon-pink);
-    box-shadow: 0 0 15px var(--neon-pink);
-    padding: 40px;
-    min-width: 600px;
-    max-width: 90%;
-    z-index: 20;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-}
-
-.missions-log-container h2,
-.my-player-container h2,
-.options-container h2,
-.quit-container h2,
-.mission-screen h2 {
-    text-align: center;
-    font-size: 2.5rem;
-}
-
-/* Mission List specific styling */
-#mission-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-.mission-item {
-    padding: 10px 20px;
-    border: 1px solid var(--neon-green);
-    color: var(--neon-green);
-    background: rgba(0, 255, 136, 0.1);
-    font-size: 1rem;
-    cursor: pointer;
-    transition: background 0.2s;
-}
-.mission-item:hover {
-    background: rgba(0, 255, 136, 0.25);
-    box-shadow: 0 0 8px var(--neon-green);
-}
-.mission-item:disabled {
-    color: var(--light-gray);
-    border-color: var(--light-gray);
-    background: none;
+.menu-button:disabled, .mission-item:disabled {
+    border-color: #555;
+    color: #555;
     box-shadow: none;
     cursor: not-allowed;
 }
 
-/* Hub Progress Bar */
-.progress-bar-container {
-    background-color: #333;
-    border: 1px solid var(--neon-blue);
-    height: 20px;
-    width: 100%;
-    overflow: hidden;
-}
-.progress-bar {
-    height: 100%;
-    width: 25%; /* Example: 25% full */
-    background-color: var(--neon-blue);
-    transition: width 0.5s ease-out;
-}
-
-/* --- 5. QUICK PLAY 3D GAME MODE STYLING --- */
-
+/* Quickplay UI Layout */
 .quickplay-game-mode {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100vw;
     height: 100vh;
-    z-index: 5;
+    overflow: hidden;
 }
 
 #scene-container {
     width: 100%;
     height: 100%;
+    /* The canvas will be appended here */
 }
 
-/* --- Shot Meter HUD --- */
+#controls-info {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border: 1px solid var(--neon-blue);
+    color: var(--neon-blue);
+    font-size: 0.8rem;
+    box-shadow: 0 0 5px var(--neon-blue);
+    white-space: nowrap;
+}
 
+#score-display {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 0 0 5px var(--neon-blue);
+}
+
+#camera-toggle {
+    position: absolute;
+    top: 10px;
+    right: 120px;
+    padding: 8px;
+    border: 1px solid var(--neon-pink);
+    color: var(--neon-pink);
+    cursor: pointer;
+    background: rgba(0, 0, 0, 0.5);
+    box-shadow: 0 0 5px var(--neon-pink);
+}
+#camera-toggle:hover {
+    box-shadow: 0 0 10px var(--neon-pink);
+}
+
+/* Shot Meter Styling */
 #shot-meter-container {
     position: absolute;
     bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
-    width: 300px;
-    height: 20px;
-    background-color: rgba(0, 0, 0, 0.7);
-    border: 2px solid var(--neon-blue);
-    box-shadow: 0 0 10px var(--neon-blue);
-    overflow: hidden;
-    z-index: 30;
+    width: 200px;
+    height: 15px;
+    border: 2px solid var(--neon-pink);
+    background-color: rgba(0, 0, 0, 0.8);
+    box-shadow: 0 0 8px var(--neon-pink);
+    z-index: 100;
 }
 
 #shot-meter-fill {
     height: 100%;
     width: 0%;
-    background-color: var(--neon-blue); /* Default charge color */
-    transition: background-color 0.1s;
+    background-color: var(--neon-blue);
+    transition: width 0.05s linear;
 }
 
-/* Sweet Spot Visual (Overlay - requires JS to show/hide) */
 #shot-meter-sweet-spot {
     position: absolute;
-    top: 0;
-    left: 40%; /* SWEET_SPOT_MIN (40%) */
-    width: 30%; /* SWEET_SPOT_MAX (70%) - SWEET_SPOT_MIN (40%) = 30% */
+    left: 40%; /* SWEET_SPOT_MIN * 100% */
+    width: 30%; /* (SWEET_SPOT_MAX - SWEET_SPOT_MIN) * 100% */
     height: 100%;
-    border-left: 1px solid var(--neon-green);
-    border-right: 1px solid var(--neon-green);
-    background-color: rgba(0, 255, 136, 0.3); /* Neon Green Overlay */
-    box-shadow: 0 0 5px var(--neon-green);
-    pointer-events: none; /* Allows clicks/interaction to pass through */
+    background-color: rgba(16, 185, 129, 0.5); /* green-500 with transparency */
+    border-left: 1px solid white;
+    border-right: 1px solid white;
+    pointer-events: none;
 }
 
-/* Animation for overcharged shot */
+/* Keyframe for overcharge visual */
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0px red; }
+    50% { box-shadow: 0 0 10px red, 0 0 20px red; }
+    100% { box-shadow: 0 0 0px red; }
+}
+
 .pulse-glow {
-    animation: pulse-red 0.5s infinite alternate;
+    animation: pulse-glow 0.5s infinite alternate;
 }
-@keyframes pulse-red {
-    from { box-shadow: 0 0 5px #ff0000; }
-    to { box-shadow: 0 0 20px #ff0000; }
-}
-
-/* --- Controls and Score HUD --- */
-
-#controls-info {
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    color: var(--neon-blue);
-    font-size: 0.9rem;
-    text-shadow: 0 0 3px var(--neon-blue);
-    padding: 5px 10px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 5px;
-    z-index: 30;
-}
-
-#score-display {
-    position: absolute;
-    top: 4px;
-    right: 150px;
-    color: var(--neon-green);
-    font-size: 1.5rem;
-    font-weight: bold;
-    text-shadow: 0 0 5px var(--neon-green);
-    padding: 5px 10px;
-    background: rgba(0, 0, 0, 0.5);
-    border: 1px solid var(--neon-green);
-    border-radius: 5px;
-    z-index: 30;
-}
-
-/* --- Camera Toggle Button --- */
-
-#camera-toggle {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.7);
-    border: 2px solid var(--neon-pink);
-    color: var(--neon-pink);
-    box-shadow: 0 0 5px var(--neon-pink);
-    cursor: pointer;
-    z-index: 30;
-    transition: all 0.2s;
-}
-
-#camera-toggle:hover {
-    background: var(--neon-pink);
-    color: var(--dark-bg);
-}
-
-/* Tailwind Classes used in HTML (for reference, but this CSS is standalone) */
-/* .hidden { display: none !important; } */
-/* .absolute { position: absolute; } */
-/* .top-2, .right-4, .text-xs, .sm:text-sm, .text-neon-blue, .text-center { ... } */
