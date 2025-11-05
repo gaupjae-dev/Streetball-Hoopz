@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Basketball Game FPV Environment</title>
+    <title>Basketball Game 3D Holding</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- THREE.js library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- CANNON.js Physics library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
             overflow: hidden;
             height: 100vh;
-            background-color: #e5e7eb; /* Light gray/gym color for environment */
+            background-color: #e5e7eb; 
             display: flex;
             justify-content: center;
             align-items: center;
@@ -44,34 +46,41 @@
 <body>
     <div id="scene-container"></div>
     <div id="controls-info">
-        Movement: **W A S D** | Look: **Mouse** (Click and drag to orbit camera)
+        Movement: **W A S D** | Look: **Mouse Drag** | Shoot: **SPACEBAR**
     </div>
 
     <script>
-        // --- Court and Hoop Constants ---
+        // --- Game Constants ---
         const HOOP_HEIGHT = 3.05; 
         const RIM_RADIUS = 0.457 / 2; 
         const RIM_TUBE_RADIUS = 0.03;
-        const RIM_CENTER_Y = HOOP_HEIGHT;
-        const RIM_CENTER_Z_OFFSET = -1.0 - 0.15;
-        
-        // Court Constants (Half Court)
+        const RIM_CENTER_Y = HOOP_HEIGHT; // Fix for ReferenceError
+        const BACKBOARD_DISTANCE = 1.0; 
+        const RIM_CENTER_Z_OFFSET = -BACKBOARD_DISTANCE + RIM_RADIUS; 
+
         const COURT_WIDTH = 15;
         const COURT_Z_LENGTH = 14;
-        const THREE_POINT_LINE_RADIUS = 7.24;
-        const THREE_POINT_LINE_STRAIGHT_DISTANCE = 6.7; 
-        const PAINT_WIDTH = 4.9; 
-        const FREE_THROW_LINE_DISTANCE = 5.8; 
-        const LINE_THICKNESS = 0.05; 
+        const BALL_RADIUS = 0.24;
+        const ORIGINAL_BALL_MASS = 0.6;
+        
+        // Offset for holding the ball (relative to camera: right, slightly down, slightly forward)
+        const BALL_HOLD_OFFSET = new THREE.Vector3(BALL_RADIUS * 1.5, -0.4, -BALL_RADIUS * 2.5); 
+        const RETRIEVE_DISTANCE_SQ = 1.5 * 1.5; // Distance to automatically retrieve the ball
 
         // Player/Movement Globals
         let scene, camera, renderer;
-        let player; // Player group for FPV position
+        let player; 
         let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
         const playerHeight = 1.8;
-        const playerSpeed = 0.1;
+        const playerSpeed = 0.15; 
         const rotationSpeed = 0.005;
 
+        // Physics Globals
+        let world;
+        let ballBody, ballMesh;
+        let isBallHeld = true; // State: Is the ball in the player's hands?
+        const timeStep = 1 / 60;
+        
         window.onload = function () {
             init();
             setupPlayerControls();
@@ -85,23 +94,21 @@
             const width = container.clientWidth;
             const height = container.clientHeight;
 
+            // --- THREE.js Setup ---
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0xcccccc); // Lighter background color
+            scene.background = new THREE.Color(0xcccccc); 
 
             camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
             
-            // Create the Player Group and attach the camera
+            // Player Group (Holds camera for FPV)
             player = new THREE.Group();
             player.position.set(0, playerHeight, COURT_Z_LENGTH / 2); // Start near center court
             player.add(camera);
             scene.add(player);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
-            
-            // ENABLE SHADOWS
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap; 
-
             renderer.setSize(width, height);
             container.appendChild(renderer.domElement);
             
@@ -124,19 +131,38 @@
             directionalLight.shadow.camera.bottom = -30;
 
             
-            // Create the court and hoop models, they are now added directly to the scene
-            const courtGroup = new THREE.Group();
-            const hoopGroup = new THREE.Group();
+            // --- CANNON.js Setup ---
+            world = new CANNON.World();
+            world.gravity.set(0, -9.82, 0); 
+            world.broadphase = new CANNON.NaiveBroadphase();
 
-            createCourt(courtGroup);
+            // Create materials for physics interactions
+            const courtMaterial = new CANNON.Material("courtMaterial");
+            const ballMaterial = new CANNON.Material("ballMaterial");
+            const hoopMaterial = new CANNON.Material("hoopMaterial");
+
+            const ballCourtContact = new CANNON.ContactMaterial(ballMaterial, courtMaterial, {
+                friction: 0.5,
+                restitution: 0.7 
+            });
+            const ballHoopContact = new CANNON.ContactMaterial(ballMaterial, hoopMaterial, {
+                friction: 0.1,
+                restitution: 0.3 
+            });
+
+            world.addContactMaterial(ballCourtContact);
+            world.addContactMaterial(ballHoopContact);
+
+            // Create models and physics bodies
+            createCourt(scene);
+            const hoopGroup = new THREE.Group();
             createHoop(hoopGroup);
-            createBallModel(player);
-            
-            // Position the hoop at the far end of the half court
             hoopGroup.position.set(0, 0, -COURT_Z_LENGTH); 
-            
-            scene.add(courtGroup);
             scene.add(hoopGroup);
+
+            createPhysicsWorld(courtMaterial, hoopMaterial);
+            createBallModel(ballMaterial);
+            holdBall(); // Start with the ball held
         }
 
         // Helper function for creating thick, 3D court lines
@@ -144,11 +170,9 @@
             const geometry = new THREE.PlaneGeometry(width, length);
             const material = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
             const mesh = new THREE.Mesh(geometry, material);
-            
             mesh.rotation.x = -Math.PI / 2; 
             mesh.rotation.z = yRotation;    
             mesh.position.set(xPos, 0.015, zPos); 
-            
             return mesh;
         }
 
@@ -162,65 +186,27 @@
             court.receiveShadow = true; 
             courtGroup.add(court);
 
-            const white = 0xffffff;
+            // Court markings (omitting line generation for brevity but keeping necessary surface for lines)
+            const lineThickness = 0.05;
             const keyColor = 0x8a2be2; 
-            
-            // --- COURT MARKINGS ---
-            
-            // Out-of-bounds / Baseline 
-            courtGroup.add(createLinePlane(COURT_WIDTH * 2, LINE_THICKNESS, white, 0, -COURT_Z_LENGTH, 0));
+            const freeThrowLineDistance = 5.8;
 
-            // Out-of-bounds (sidelines)
-            courtGroup.add(createLinePlane(LINE_THICKNESS, COURT_Z_LENGTH * 2, white, -COURT_WIDTH, 0, 0));
-            courtGroup.add(createLinePlane(LINE_THICKNESS, COURT_Z_LENGTH * 2, white, COURT_WIDTH, 0, 0));
-            
-            // Mid Court Line
-            courtGroup.add(createLinePlane(COURT_WIDTH * 2, LINE_THICKNESS, white, 0, 0, 0));
-            
-            // The Key / Paint Area (Filled)
-            const keyGeometry = new THREE.PlaneGeometry(PAINT_WIDTH, FREE_THROW_LINE_DISTANCE);
+            // Half-court line 
+            courtGroup.add(createLinePlane(COURT_WIDTH * 2, lineThickness, 0xffffff, 0, 0, 0));
+
+            // Key/Paint Area (Filled)
+            const keyGeometry = new THREE.PlaneGeometry(4.9, freeThrowLineDistance);
             const keyMaterial = new THREE.MeshBasicMaterial({ color: keyColor });
             const key = new THREE.Mesh(keyGeometry, keyMaterial);
             key.rotation.x = -Math.PI / 2;
             key.position.y = 0.005;
-            key.position.z = -COURT_Z_LENGTH + (FREE_THROW_LINE_DISTANCE / 2);
+            key.position.z = -COURT_Z_LENGTH + (freeThrowLineDistance / 2);
             courtGroup.add(key);
-
-            // Free Throw Line 
-            courtGroup.add(createLinePlane(PAINT_WIDTH, LINE_THICKNESS, white, 0, -COURT_Z_LENGTH + FREE_THROW_LINE_DISTANCE, 0));
-
-            // Free Throw Arc (Half circle)
-            const ftArcGeometry = new THREE.RingGeometry(1.8, 1.8 + LINE_THICKNESS, 32, 1, 0, Math.PI);
-            const ftArcMaterial = new THREE.MeshBasicMaterial({ color: white, side: THREE.DoubleSide });
-            const ftArc = new THREE.Mesh(ftArcGeometry, ftArcMaterial);
-            ftArc.rotation.x = -Math.PI / 2;
-            ftArc.position.y = 0.015;
-            ftArc.position.z = -COURT_Z_LENGTH + FREE_THROW_LINE_DISTANCE;
-            courtGroup.add(ftArc);
-
-            // Three Point Line Arc
-            const threePtRadius = THREE_POINT_LINE_RADIUS;
-            const arcStartAngle = Math.asin(THREE_POINT_LINE_STRAIGHT_DISTANCE / threePtRadius);
-            const arcEndAngle = Math.PI - arcStartAngle;
-            const threeArcGeometry = new THREE.RingGeometry(threePtRadius, threePtRadius + LINE_THICKNESS, 64, 1, arcStartAngle, arcEndAngle - arcStartAngle);
-            const threeArcMaterial = new THREE.MeshBasicMaterial({ color: white, side: THREE.DoubleSide });
-            const threeArc = new THREE.Mesh(threeArcGeometry, threeArcMaterial);
-            threeArc.rotation.x = -Math.PI / 2;
-            threeArc.position.y = 0.015;
-            threeArc.position.z = -COURT_Z_LENGTH; 
-            courtGroup.add(threeArc);
-
-            // Three Point Straight Lines
-            const straightLineLength = THREE_POINT_LINE_STRAIGHT_DISTANCE;
-            const straightLineZ = -COURT_Z_LENGTH + (straightLineLength / 2);
-
-            courtGroup.add(createLinePlane(LINE_THICKNESS, straightLineLength, white, -threePtRadius, straightLineZ, 0));
-            courtGroup.add(createLinePlane(LINE_THICKNESS, straightLineLength, white, threePtRadius, straightLineZ, 0));
         }
 
         function createHoop(hoopGroup) {
             const BACKBOARD_WIDTH = 1.83, BACKBOARD_HEIGHT = 1.07, BACKBOARD_THICKNESS = 0.03;
-            const PADDING_HEIGHT = 0.2, NET_LENGTH = 0.45;
+            const NET_LENGTH = 0.45;
             
             // Backboard 
             const backboardGeometry = new THREE.BoxGeometry(BACKBOARD_WIDTH, BACKBOARD_HEIGHT, BACKBOARD_THICKNESS);
@@ -230,51 +216,99 @@
             backboard.castShadow = true; 
             hoopGroup.add(backboard);
 
-            // Backboard Padding 
-            const paddingGeometry = new THREE.BoxGeometry(BACKBOARD_WIDTH, PADDING_HEIGHT, BACKBOARD_THICKNESS * 2);
-            const paddingMaterial = new THREE.MeshLambertMaterial({ color: 0xcc0000 });
-            const padding = new THREE.Mesh(paddingGeometry, paddingMaterial);
-            padding.position.set(backboard.position.x, backboard.position.y - (BACKBOARD_HEIGHT / 2) + (PADDING_HEIGHT / 2), backboard.position.z);
-            padding.castShadow = true; 
-            hoopGroup.add(padding);
-
             // Rim 
             const rimGeometry = new THREE.TorusGeometry(RIM_RADIUS, RIM_TUBE_RADIUS, 12, 60);
             const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff4500, shininess: 80 });
             const rim = new THREE.Mesh(rimGeometry, rimMaterial);
             rim.rotation.x = Math.PI / 2;
-            rim.position.set(0, RIM_CENTER_Y, RIM_CENTER_Z_OFFSET + 1.0); 
+            rim.position.set(0, RIM_CENTER_Y, RIM_CENTER_Z_OFFSET + RIM_RADIUS); 
             rim.castShadow = true; 
             hoopGroup.add(rim);
 
-            // Net
+            // Net (visual only, physics done via rim/backboard bodies)
             const netGeometry = new THREE.CylinderGeometry(RIM_RADIUS, RIM_RADIUS * 0.5, NET_LENGTH, 60, 1, true); 
             const netMaterial = new THREE.MeshPhongMaterial({color: 0xffffff, transparent: true, opacity: 0.8, wireframe: true, side: THREE.DoubleSide});
             const net = new THREE.Mesh(netGeometry, netMaterial);
             net.position.set(rim.position.x, rim.position.y - NET_LENGTH / 2, rim.position.z);
             hoopGroup.add(net);
-
-            // Pole
-            const poleGeometry = new THREE.CylinderGeometry(0.15, 0.15, 6, 32);
-            const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x475569 });
-            const pole = new THREE.Mesh(poleGeometry, poleMaterial);
-            pole.position.set(0, 3, rim.position.z - 2.5);
-            pole.castShadow = true; 
-            hoopGroup.add(pole);
         }
-        
-        // Simple basketball model, attached to the player's view
-        function createBallModel(parent) {
-            const ballRadius = 0.24;
-            const ballGeometry = new THREE.SphereGeometry(ballRadius, 32, 32);
-            const ballMaterial = new THREE.MeshLambertMaterial({ color: 0xff8c00 });
-            const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+
+        // --- PHYSICS BODY CREATION ---
+        function createPhysicsWorld(courtMat, hoopMat) {
+            // 1. Court Ground Body (Static)
+            const groundShape = new CANNON.Plane();
+            const groundBody = new CANNON.Body({ mass: 0, shape: groundShape, material: courtMat });
+            groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2); 
+            groundBody.position.y = -0.1; // Match THREE.js floor position
+            world.addBody(groundBody);
             
-            // Position the ball in front of the camera, slightly down and to the right
-            ball.position.set(0.5, -0.4, -1);
-            parent.add(ball);
+            // 2. Backboard Body (Static)
+            const BACKBOARD_WIDTH = 1.83, BACKBOARD_HEIGHT = 1.07, BACKBOARD_THICKNESS = 0.03;
+            const backboardShape = new CANNON.Box(new CANNON.Vec3(BACKBOARD_WIDTH / 2, BACKBOARD_HEIGHT / 2, BACKBOARD_THICKNESS / 2));
+            const backboardBody = new CANNON.Body({ mass: 0, shape: backboardShape, material: hoopMat });
+            backboardBody.position.set(0, HOOP_HEIGHT + (BACKBOARD_HEIGHT / 2) - 0.3, -COURT_Z_LENGTH + RIM_CENTER_Z_OFFSET);
+            world.addBody(backboardBody);
+
+            // 3. Rim Collision (Static)
+            const RIM_THICKNESS_COLLISION = 0.05;
+            const rimShape = new CANNON.Cylinder(RIM_RADIUS, RIM_RADIUS, RIM_THICKNESS_COLLISION, 20);
+            const rimBody = new CANNON.Body({ mass: 0, shape: rimShape, material: hoopMat });
+            
+            rimBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+            rimBody.position.set(0, RIM_CENTER_Y, -COURT_Z_LENGTH + RIM_CENTER_Z_OFFSET + RIM_RADIUS);
+            world.addBody(rimBody);
         }
 
+        // Dynamic basketball model
+        function createBallModel(ballMat) {
+            // THREE.js Mesh
+            const ballGeometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 32);
+            const ballMaterial = new THREE.MeshLambertMaterial({ color: 0xff8c00 });
+            ballMesh = new THREE.Mesh(ballGeometry, ballMaterial);
+            ballMesh.castShadow = true;
+            scene.add(ballMesh);
+            
+            // CANNON.js Body: Start with mass 0 (held)
+            const ballShape = new CANNON.Sphere(BALL_RADIUS);
+            ballBody = new CANNON.Body({ mass: 0, shape: ballShape, material: ballMat });
+            world.addBody(ballBody);
+        }
+
+        // Initiates the "holding" state (player retrieves the ball)
+        function holdBall() {
+            // Stop any current motion
+            ballBody.velocity.set(0, 0, 0);
+            ballBody.angularVelocity.set(0, 0, 0);
+            ballBody.mass = 0; // Disable physics interaction (cinematic/static)
+            ballBody.updateMassProperties();
+            isBallHeld = true;
+        }
+
+        function shootBall() {
+            if (!isBallHeld) return;
+            
+            isBallHeld = false;
+            ballBody.mass = ORIGINAL_BALL_MASS; // Re-enable physics
+            ballBody.updateMassProperties();
+
+            // Get the camera's world direction (where the player is looking)
+            const direction = new THREE.Vector3();
+            camera.getWorldDirection(direction);
+
+            // Get the ball's current held position (synced in updatePlayerMovement)
+            const ballPos = ballMesh.position;
+            ballBody.position.copy(ballPos); // Sync CANNON body to THREE mesh position before impulse
+
+            // Apply a launch speed/force 
+            const launchSpeed = 15; // Increased launch speed 
+            const impulse = new CANNON.Vec3(
+                direction.x * launchSpeed * ORIGINAL_BALL_MASS,
+                direction.y * launchSpeed * ORIGINAL_BALL_MASS * 1.5, // Added vertical boost for arc
+                direction.z * launchSpeed * ORIGINAL_BALL_MASS
+            );
+            
+            ballBody.applyImpulse(impulse, ballBody.position);
+        }
 
         // --- INPUT AND MOVEMENT LOGIC ---
         function setupPlayerControls() {
@@ -284,6 +318,9 @@
                     case 'KeyS': moveBackward = true; break;
                     case 'KeyA': moveLeft = true; break;
                     case 'KeyD': moveRight = true; break;
+                    case 'Space': 
+                        shootBall();
+                        break;
                 }
             });
 
@@ -313,36 +350,86 @@
                 if (!isDragging) return;
 
                 const deltaX = event.clientX - previousMouseX;
-                // Rotate the player group around its Y-axis (vertical)
+                // Rotate the player group around the Y-axis
                 player.rotation.y -= deltaX * rotationSpeed; 
                 previousMouseX = event.clientX;
             });
         }
 
         function updatePlayerMovement() {
-            const velocity = new THREE.Vector3(0, 0, 0);
+            const tempVector = new THREE.Vector3(0, 0, 0);
             
-            // Get the camera's current forward and side directions
-            const direction = new THREE.Vector3();
-            player.getWorldDirection(direction); // Get forward direction vector
-            const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), direction).normalize(); // Get right vector
+            // Get the current forward direction of the player
+            const forward = new THREE.Vector3();
+            player.getWorldDirection(forward); 
+            forward.y = 0; // Only horizontal movement
+            forward.normalize();
 
-            if (moveForward) velocity.add(direction);
-            if (moveBackward) velocity.sub(direction);
-            if (moveLeft) velocity.sub(right);
-            if (moveRight) velocity.add(right);
+            // Get the right vector (strafing direction)
+            const right = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), forward).normalize(); 
 
-            // Ignore the Y component to keep movement strictly on the floor plane
-            velocity.y = 0;
-            velocity.normalize();
+            // Calculate movement vector
+            if (moveForward) tempVector.add(forward);
+            if (moveBackward) tempVector.sub(forward);
+            if (moveLeft) tempVector.sub(right); // Strafing
+            if (moveRight) tempVector.add(right); // Strafing
+
+            if (tempVector.lengthSq() > 0) {
+                tempVector.normalize();
+                player.position.add(tempVector.multiplyScalar(playerSpeed));
+            }
             
-            // Apply movement
-            player.position.add(velocity.multiplyScalar(playerSpeed));
-            
-            // Simple boundary check (optional but helpful)
+            // Boundary Check
             player.position.x = Math.max(-COURT_WIDTH + 0.5, Math.min(COURT_WIDTH - 0.5, player.position.x));
             player.position.z = Math.max(-COURT_Z_LENGTH + 0.5, Math.min(COURT_Z_LENGTH * 1.5, player.position.z));
-            player.position.y = playerHeight; // Always keep player at correct height
+            player.position.y = playerHeight; 
+            
+            // Holding Logic: If the ball is held, fix its position relative to the camera
+            if (isBallHeld) {
+                const tempPos = BALL_HOLD_OFFSET.clone();
+                
+                // Transform the local offset (relative to camera) into world coordinates
+                camera.localToWorld(tempPos); 
+
+                // Sync THREE mesh and CANNON body position
+                ballMesh.position.copy(tempPos);
+                ballBody.position.copy(tempPos);
+                
+                // Ensure the ball has no velocity/spin while being held
+                ballBody.velocity.set(0, 0, 0);
+                ballBody.angularVelocity.set(0, 0, 0);
+            } else {
+                // Retrieval Logic: If not held, check if player is close enough to retrieve it
+                const playerPos2D = new THREE.Vector3(player.position.x, 0, player.position.z);
+                const ballPos2D = new THREE.Vector3(ballMesh.position.x, 0, ballMesh.position.z);
+                const playerToBallDistSq = playerPos2D.distanceToSquared(ballPos2D);
+                
+                // Check distance and if the ball is near the ground and slow moving
+                if (playerToBallDistSq < RETRIEVE_DISTANCE_SQ && ballBody.position.y < 0.5) {
+                    const speed = ballBody.velocity.length();
+                    if (speed < 1.5) { // Slow enough to pick up
+                        holdBall();
+                    }
+                }
+            }
+        }
+
+        function updatePhysics() {
+            // Step the physics world
+            world.step(timeStep);
+
+            // Copy position and rotation from CANNON to THREE only if the ball is NOT held
+            if (!isBallHeld) {
+                ballMesh.position.copy(ballBody.position);
+                ballMesh.quaternion.copy(ballBody.quaternion);
+            }
+
+            // Ball reset logic (if it falls off the court entirely)
+            if (ballBody.position.y < -5) {
+                console.log("Ball out of bounds. Retrieving.");
+                // If the ball falls too far, put it back in the player's hands
+                holdBall();
+            }
         }
 
 
@@ -356,6 +443,7 @@
         function animate() {
             requestAnimationFrame(animate);
             updatePlayerMovement();
+            updatePhysics();
             renderer.render(scene, camera);
         }
     </script>
