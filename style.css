@@ -1,0 +1,9 @@
+body {
+    margin: 0;
+    overflow: hidden; /* Prevent scroll bars */
+}
+#renderCanvas {
+    display: block;
+    width: 100vw; /* Viewport Width */
+    height: 100vh; /* Viewport Height */
+}
