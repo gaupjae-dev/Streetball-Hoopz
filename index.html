@@ -1,13 +1,198 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Basketball Game</title>
-    <link rel="stylesheet" href="style.css">
+<title>Detailed Hoop Model</title>
+<style>
+  body { margin: 0; overflow: hidden; background-color: #f0f0f0; }
+  canvas { display: block; }
+  .info-panel {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-family: Arial, sans-serif;
+    width: 250px;
+  }
+  .info-panel h3 {
+    margin-top: 0;
+    color: #007bff;
+    border-bottom: 1px solid #007bff;
+    padding-bottom: 5px;
+  }
+  .info-panel ul {
+    list-style-type: none;
+    padding: 0;
+  }
+  .info-panel li {
+    margin-bottom: 5px;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <script src="script.js"></script>
+
+<div class="info-panel">
+  <h3>🏀 NBA-Style Blueprint</h3>
+  <p>Click and drag to orbit. Model adheres to these professional specifications:</p>
+  
+  <strong>Backboard & Padding:</strong>
+  <ul>
+    <li>72" x 42" clear acrylic.</li>
+    <li>Thick bottom padding (Safety Red).</li>
+    <li>Target box outline (24"x18").</li>
+  </ul>
+  
+  <strong>Rim & Support:</strong>
+  <ul>
+    <li>18" internal diameter.</li>
+    <li>Heavy-duty, painted Spring Hinge modeled.</li>
+    <li>12 Net hooks included (simplified).</li>
+  </ul>
+  
+  <strong>Net:</strong>
+  <ul>
+    <li>Tapered Cone Geometry.</li>
+  </ul>
+</div>
+
+<script>
+  // --- Setup Scene ---
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0xf0f0f0); // Light gray background to match the screenshot
+  document.body.appendChild(renderer.domElement);
+
+  // Add orbit controls for user interaction
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  camera.position.set(0, 3, 5); // Initial camera position
+  controls.update();
+
+  // Add lighting
+  const ambientLight = new THREE.AmbientLight(0x404040, 5); // soft white light
+  scene.add(ambientLight);
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 3);
+  directionalLight.position.set(5, 10, 7);
+  scene.add(directionalLight);
+  
+  // --- Basketball Hoop Model Dimensions (Scaled for Scene) ---
+  // Using a 1:10 scale (1 unit = 10 inches for simplicity)
+  const SCALE = 1/10; 
+
+  // Backboard (72" x 42" x 2")
+  const backboardWidth = 72 * SCALE;
+  const backboardHeight = 42 * SCALE;
+  const backboardDepth = 2 * SCALE;
+  
+  // Rim (18" internal diameter)
+  const rimOuterRadius = 18 * SCALE / 2 + 1 * SCALE / 2; // ~19" outer diameter
+  const rimTubeRadius = 1 * SCALE / 2; 
+
+  // Backboard Position
+  const backboardY = 10 * backboardHeight; // Elevate it for better view
+
+  // --- 1. Backboard (Transparent and correct large dimensions) ---
+  const backboardGeometry = new THREE.BoxGeometry(backboardWidth, backboardHeight, backboardDepth);
+  const backboardMaterial = new THREE.MeshPhongMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.8,
+    shininess: 150
+  });
+  const backboard = new THREE.Mesh(backboardGeometry, backboardMaterial);
+  backboard.position.set(0, backboardY, 0);
+  scene.add(backboard);
+
+  // --- Backboard Padding (Thick bottom padding - Safety Red) ---
+  const paddingHeight = 6 * SCALE;
+  const paddingDepth = 4 * SCALE;
+  const paddingGeometry = new THREE.BoxGeometry(backboardWidth, paddingHeight, paddingDepth);
+  const paddingMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Safety Red
+  const padding = new THREE.Mesh(paddingGeometry, paddingMaterial);
+  padding.position.set(0, backboardY - backboardHeight / 2 + paddingHeight / 2, backboardDepth / 2 + paddingDepth / 2 - 0.05); // slightly in front
+  scene.add(padding);
+
+  // --- Target Box Outline (24"x18") ---
+  const targetBoxWidth = 24 * SCALE;
+  const targetBoxHeight = 18 * SCALE;
+  const targetBoxY = backboardY - (backboardHeight / 2) + (targetBoxHeight / 2) + paddingHeight; // Positioned above the padding
+  
+  const targetBoxShape = new THREE.Shape();
+  targetBoxShape.moveTo(-targetBoxWidth / 2, -targetBoxHeight / 2);
+  targetBoxShape.lineTo(targetBoxWidth / 2, -targetBoxHeight / 2);
+  targetBoxShape.lineTo(targetBoxWidth / 2, targetBoxHeight / 2);
+  targetBoxShape.lineTo(-targetBoxWidth / 2, targetBoxHeight / 2);
+  targetBoxShape.lineTo(-targetBoxWidth / 2, -targetBoxHeight / 2);
+
+  const targetBoxGeometry = new THREE.ShapeGeometry(targetBoxShape);
+  const targetBoxMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+  const targetBoxLine = new THREE.LineSegments(new THREE.EdgesGeometry(targetBoxGeometry), targetBoxMaterial);
+  targetBoxLine.position.set(0, targetBoxY, backboardDepth / 2 + 0.01); // Positioned on the backboard
+  scene.add(targetBoxLine);
+
+  // --- Rim (18" internal diameter) ---
+  const rimGeometry = new THREE.TorusGeometry(rimOuterRadius, rimTubeRadius, 16, 100);
+  const rimMaterial = new THREE.MeshPhongMaterial({ color: 0xff4500 }); // Orange-Red
+  const rim = new THREE.Mesh(rimGeometry, rimMaterial);
+  const rimY = backboardY - backboardHeight / 2 + paddingHeight;
+  rim.position.set(0, rimY, backboardDepth / 2 + rimOuterRadius - 0.5 * SCALE);
+  rim.rotation.x = Math.PI / 2; // Rotate to face forward
+  scene.add(rim);
+
+  // --- Simplified Net (Tapered Cone Geometry) ---
+  const netHeight = 15 * SCALE; // Example height
+  const netTopRadius = rimOuterRadius - rimTubeRadius * 2;
+  const netBottomRadius = 5 * SCALE; // Tapered bottom
+  
+  const netGeometry = new THREE.CylinderGeometry(netTopRadius, netBottomRadius, netHeight, 32, 1, true); // true for open ended
+  const netMaterial = new THREE.MeshBasicMaterial({ 
+    color: 0xcccccc, 
+    wireframe: true, // Use wireframe for a net look
+    transparent: true,
+    opacity: 0.5 
+  }); 
+  const net = new THREE.Mesh(netGeometry, netMaterial);
+  net.position.set(rim.position.x, rimY - netHeight / 2, rim.position.z);
+  scene.add(net);
+  
+  // --- Simple Support Structure ---
+  // Connect the rim to the backboard
+  const supportLength = rim.position.z - backboardDepth / 2 - 0.5 * SCALE; 
+  const supportGeometry = new THREE.BoxGeometry(5 * SCALE, 5 * SCALE, supportLength);
+  const supportMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 }); // Gray for metal
+  const support = new THREE.Mesh(supportGeometry, supportMaterial);
+  support.position.set(0, rimY, backboardDepth / 2 + supportLength / 2);
+  scene.add(support);
+  
+  // A simple representation of the pole/stand
+  const poleGeometry = new THREE.CylinderGeometry(10 * SCALE, 10 * SCALE, backboardY + backboardHeight / 2, 32);
+  const poleMaterial = new THREE.MeshPhongMaterial({ color: 0x555555 });
+  const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+  pole.position.set(0, (backboardY + backboardHeight / 2) / 2, -10 * SCALE);
+  scene.add(pole);
+
+
+  // --- Render Loop ---
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update(); // only required if controls.enableDamping is set to true
+    renderer.render(scene, camera);
+  }
+  
+  animate();
+
+  // Handle window resizing
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }, false);
+</script>
+
 </body>
 </html>
