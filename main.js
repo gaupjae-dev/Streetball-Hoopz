@@ -39,3 +39,35 @@ window.addEventListener('resize', () => {
 });
 
 animate(); // Start the game loop!
+// main.js (Append this code after the setup, before animate())
+
+function createCourt() {
+    // A simple PlaneGeometry for the floor
+    const geometry = new THREE.PlaneGeometry(30, 50); // Large rectangle
+    const material = new THREE.MeshPhongMaterial({ color: 0xcd853f, side: THREE.DoubleSide }); // Brown wood color
+    const court = new THREE.Mesh(geometry, material);
+    
+    // Rotate it to be horizontal on the XY plane
+    court.rotation.x = Math.PI / 2;
+    court.position.y = 0;
+    scene.add(court);
+    
+    // Give it a name for later reference (e.g., collision checks)
+    court.userData.name = 'court';
+}
+
+function createBall() {
+    // SphereGeometry for the ball
+    const geometry = new THREE.SphereGeometry(0.5, 32, 32); // Radius 0.5
+    const material = new THREE.MeshPhongMaterial({ color: 0xff8c00 }); // Orange color
+    const ball = new THREE.Mesh(geometry, material);
+    
+    ball.position.set(0, 1, 0); // Start the ball slightly above the court
+    scene.add(ball);
+    
+    // Store a reference globally so we can move it later
+    return ball;
+}
+
+createCourt();
+const basketball = createBall();
